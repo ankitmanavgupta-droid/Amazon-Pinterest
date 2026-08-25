@@ -198,12 +198,40 @@ posts/<slug>/
   pin.json          titles, products, affiliate links, layout, SEO, status
   raw/productN.jpg  original product photo
   cutout/productN.png  background removed, cropped tight
-  pin.png           the rendered pin image
+  pin.png           the rendered pin image (2:3, what Pinterest gets)
+  tiktok.png        the same image re-framed to 9:16 for a slideshow
 docs/shop/<slug>.html   the published landing page (+ its .png)
 ```
 
 `pin.json` is the single source of truth; status is derived from it and from
 what's on disk, so nothing can drift out of sync.
+
+## The code
+
+```
+app.py            the Flask app — every page and API route
+config.py         paths, keys, and the GitHub Pages URL
+
+pins.py           pin state, the build pipeline, and outfit layout
+wardrobe.py       the shared closet and the combination generator
+slideshows.py     grouping outfits into TikTok carousels
+generated_pins.py the ChatGPT-image template, and interval posting
+discovery.py      turning a described look into scored products
+publishing.py     pushing pages live, then posting to Pinterest/TikTok
+zernio.py         the posting gateway — Pinterest and TikTok both go through it
+
+amazon/           affiliate links, Canopy lookups, images, background removal
+pinterest/        SEO copy, board picking, and the direct API client (unused)
+templates/        dashboard, pin builder, outfit builder, wardrobe
+tests/            pytest, no network — every external call is stubbed
+```
+
+The single-purpose scripts at the root (`build_pin.py`, `publish_pin.py`,
+`post_pin.py`, `schedule_pin.py`, `find_products.py`, `sync_generated.py`,
+`add_clothes_link.py`, `authorize_pinterest.py`) are the terminal entry points
+described above; each one is a thin wrapper over the modules.
+
+Run the tests with `pytest`.
 
 ## Notes
 

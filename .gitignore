@@ -1,15 +1,26 @@
+# Environment
 venv/
+.env
+
+# Python
 __pycache__/
 *.pyc
-.env
-posts/
-links.txt
+.pytest_cache/
+
+# macOS
 .DS_Store
-.cache/
+
+# Working data — pins, the wardrobe and the images they're built from. Only
+# docs/shop/ is committed, because GitHub Pages serves the landing pages from it.
+posts/
+wardrobe-items/
 incoming-clothes/
 generated-images/
 processed-inputs/
 failed-inputs/
+links.txt
+
+# Local state
+.cache/
 .imagegen-state.json
-wardrobe-items/
 .slideshows.json

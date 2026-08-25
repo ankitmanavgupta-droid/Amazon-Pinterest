@@ -82,17 +82,6 @@ def get_connected_tiktok_accounts() -> list:
     return get_connected_accounts("tiktok")
 
 
-def get_tiktok_creator_info(account_id: str) -> dict:
-    """The creator's permitted privacy levels and posting limits. TikTok
-    rejects a post whose privacy_level isn't one this account allows."""
-    response = requests.get(
-        f"{API_BASE_URL}/accounts/{account_id}/tiktok/creator-info",
-        params={"mediaType": "photo"}, headers=_headers(), timeout=30,
-    )
-    _check(response, "Fetching TikTok creator info")
-    return response.json()
-
-
 def list_boards(account_id: str) -> list:
     """Lists the given Pinterest account's boards: [{id, name, description, privacy, ...}]."""
     response = requests.get(f"{API_BASE_URL}/accounts/{account_id}/pinterest-boards", headers=_headers(), timeout=30)

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 import publishing
-from pinterest import zernio_client
+import zernio as zernio_client
 
 
 # ---------- Reading the requested time ----------

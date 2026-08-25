@@ -1,4 +1,0 @@
-interface:
-  display_name: "Garment Flat-Lay Generator"
-  short_description: "Recreate garments as vintage flat-lay photos"
-  default_prompt: "Use $garment-flatlay-generator to process the next queued garment reference image."

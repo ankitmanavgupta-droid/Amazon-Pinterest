@@ -18,8 +18,8 @@ import pins
 import slideshows
 import wardrobe
 from config import DISCOVERY_DOMAIN, GITHUB_PAGES_BASE_URL, MAX_PRODUCTS, TEMPLATES_DIR
-from pinterest.zernio_client import ZernioAPIError, get_connected_pinterest_accounts, list_boards
 from publishing import PublishError, post_pin, post_slideshow, publish_pin, schedule_pin
+from zernio import ZernioAPIError, get_connected_pinterest_accounts, list_boards
 
 app = Flask(__name__, template_folder=str(TEMPLATES_DIR))
 

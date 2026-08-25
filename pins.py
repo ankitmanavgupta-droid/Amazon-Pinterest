@@ -49,7 +49,6 @@ DEFAULT_OUTFIT_SECTIONS = (
     {"id": "shoes", "label": "Shoes"},
     {"id": "accessories", "label": "Accessories"},
 )
-OUTFIT_CATEGORIES = tuple(section["id"] for section in DEFAULT_OUTFIT_SECTIONS)
 MAX_OUTFIT_ASSETS = 40
 MAX_OUTFIT_SECTIONS = 12
 
@@ -498,7 +497,6 @@ PAIR_GAP = 12
 # the same top (or, where it can, the same bottom).
 TOP_CATEGORIES = {"tops", "jumpers", "jackets"}
 BOTTOM_CATEGORIES = {"jeans"}
-BOTTOM_RIGHT_CATEGORY = "shoes"
 
 # Down the right column, with how much vertical space each row takes relative
 # to the others. A tuple shares one row side by side.

@@ -14,7 +14,7 @@ matters for *picking up new work*.
 """
 
 import generated_pins
-from pinterest.zernio_client import get_connected_pinterest_accounts, list_boards
+from zernio import get_connected_pinterest_accounts, list_boards
 
 
 def _board_names() -> list:

@@ -8,12 +8,12 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from config import GITHUB_PAGES_BASE_URL, PROJECT_ROOT, SHOP_DIR
 from pinterest.seo import format_description, pick_best_board
-from pinterest.zernio_client import (
-    create_pin, create_tiktok_photo_post, get_connected_pinterest_accounts,
-    get_connected_tiktok_accounts, list_boards, upload_media, zernio_failure,
-)
 from pins import (
     _now, destination_link, has_landing_page, load_pin, pin_dir, save_pin, write_tiktok_frame,
+)
+from zernio import (
+    create_pin, create_tiktok_photo_post, get_connected_pinterest_accounts,
+    get_connected_tiktok_accounts, list_boards, upload_media, zernio_failure,
 )
 
 

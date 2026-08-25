@@ -88,8 +88,3 @@ def download_remote_image(image_url: str) -> bytes:
     if not chunks:
         raise ValueError("The website returned an empty image.")
     return b"".join(chunks)
-
-
-def download_pinterest_image(image_url: str) -> bytes:
-    """Backward-compatible name for older callers."""
-    return download_remote_image(image_url)

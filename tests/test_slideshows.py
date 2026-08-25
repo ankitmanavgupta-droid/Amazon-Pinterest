@@ -213,7 +213,7 @@ def test_summary_reports_unrendered_slides_as_not_ready(slideshow_file, posts_di
 def test_failure_reason_comes_from_error_message():
     """status: "failed" on its own told us nothing — the sentence a person can
     act on is in errorMessage, which the first version of this missed."""
-    from pinterest.zernio_client import zernio_failure
+    from zernio import zernio_failure
 
     result = {
         "post": {"platforms": [{
@@ -227,7 +227,7 @@ def test_failure_reason_comes_from_error_message():
 
 
 def test_failure_reason_falls_back_through_the_other_shapes():
-    from pinterest.zernio_client import zernio_failure
+    from zernio import zernio_failure
 
     assert zernio_failure({"platformResults": [{"error": "nope"}]}) == "nope"
     assert zernio_failure({"error": "All platforms failed"}) == "All platforms failed"
