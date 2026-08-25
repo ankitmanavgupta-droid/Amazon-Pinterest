@@ -1,0 +1,21 @@
+- popular item scraping
+- autopicks colour depending on colour of tops
+- instead of just scrolling through amazon scrape existing influencers storefronts
+- have multiple templates - in the hashed line include what template you want to use
+- make the github pages website look nice
+- change ankitmanavgupta-droid account to homestudios
+
+
+- feeds photos which get added to a folder to GPT - automatic cowork? with revolut subscription
+
+LOW PRIORITY
+1. add 'tiktok mode' - creates slideshow photos rather than pins
+    - each slide has one product?
+    - colour of the product matches the colour of the background through code
+
+2. eventually turn this into a subscription
+
+3. finds trends that are upcoming that you should post about now
+
+4. ccscraper.com - finds higher commission products
+

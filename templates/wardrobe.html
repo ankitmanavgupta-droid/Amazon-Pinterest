@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wardrobe — Outfit Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Italiana&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --ink: #25231f; --muted: #77736b; --paper: #fbfaf7; --line: #e6e2da;
+    --accent: #9c4c5f; --accent-soft: #f5e7ea; --panel: #fff;
+  }
+  body { margin: 0; min-height: 100vh; font-family: 'DM Sans', sans-serif; color: var(--ink); background: #efede8; }
+  button, input, select { font: inherit; }
+  button { cursor: pointer; }
+  .app { max-width: 1280px; margin: 0 auto; padding: 26px 26px 60px; }
+  header.top { display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; }
+  .back { color: var(--accent); font-size: 12px; text-decoration: none; }
+  h1 { margin: 4px 0 0; font: 34px/1 'Italiana', serif; font-weight: 400; }
+  .lede { margin: 0; color: var(--muted); font-size: 12px; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+  .panel { background: var(--panel); border-radius: 12px; padding: 20px; box-shadow: 0 6px 20px rgba(40,34,26,.06); }
+  .eyebrow { margin: 0 0 10px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  h2 { margin: 0 0 4px; font-size: 17px; }
+  label { display: block; margin: 12px 0 5px; font-size: 11px; font-weight: 700; }
+  input[type=text], input[type=number], select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--ink); }
+  .upload-box { padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); margin-bottom: 16px; }
+  .section-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; align-items: end; }
+  .section-row label { margin-top: 0; }
+  .add-section { height: 37px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--accent); font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .drop-zone { margin-top: 12px; padding: 18px 12px; border: 2px dashed #c8c1b6; border-radius: 9px; background: #fff; color: var(--muted); text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop-zone:hover, .drop-zone:focus-visible { border-color: var(--accent); outline: 0; background: var(--accent-soft); }
+  .drop-zone.drag-over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop-zone.busy { opacity: .6; cursor: wait; pointer-events: none; }
+  .drop-zone strong { display: block; color: var(--ink); font-size: 12px; }
+  .drop-zone span:last-child { display: block; margin-top: 3px; font-size: 10px; }
+  #garmentFiles { display: none; }
+  .upload-status { min-height: 16px; margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+  .tabs { display: flex; gap: 6px; margin: 16px 0 4px; overflow-x: auto; padding-bottom: 4px; }
+  .tab { position: relative; border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; background: #fff; color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .tab.active { border-color: var(--ink); background: var(--ink); color: #fff; }
+  .tab.drop-ready { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 12px; gap: 10px; flex-wrap: wrap; }
+  .toolbar label { margin: 0; font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .item { position: relative; padding: 7px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  .item:hover { border-color: #aaa39a; }
+  .item.dragging { opacity: .45; }
+  .item.archived { opacity: .55; }
+  .item-image { aspect-ratio: 1; display: grid; place-items: center; border-radius: 7px; overflow: hidden; background-color: #fafafa; background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%); background-size: 12px 12px; background-position: 0 0,0 6px,6px -6px,-6px 0; }
+  .item img { width: 90%; height: 90%; object-fit: contain; }
+  .item-name { display: block; margin-top: 6px; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+  .item-actions { display: grid; grid-template-columns: minmax(0, 1fr) 26px 26px; gap: 5px; margin-top: 7px; }
+  .item-section { min-width: 0; height: 26px; padding: 3px 4px; border-radius: 5px; font-size: 9px; }
+  .icon-btn { width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: #fff; font-size: 12px; line-height: 1; }
+  .icon-btn.archive { color: var(--accent); }
+  .icon-btn.restore { color: #2f7a4c; border-color: #c8e6d2; background: #f2fbf5; }
+  .icon-btn.delete { border-color: #f1caca; background: #fff5f5; color: #a52e35; }
+  .empty { grid-column: 1/-1; padding: 26px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 11px; line-height: 1.5; text-align: center; }
+  .recipe-row { display: grid; grid-template-columns: minmax(0,1fr) 78px; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .recipe-row:last-of-type { border-bottom: 0; }
+  .recipe-label { font-size: 12px; }
+  .recipe-label small { display: block; color: var(--muted); font-size: 10px; font-weight: 400; }
+  .recipe-combine { display: flex; align-items: center; gap: 5px; margin: 3px 0 0; font-size: 10px; font-weight: 500; }
+  .recipe-combine input { width: auto; }
+  .estimate { margin: 14px 0; padding: 10px 12px; border-radius: 8px; background: var(--paper); font-size: 12px; line-height: 1.5; }
+  .estimate.warn { background: #fdeeee; color: #a52e35; }
+  .divider { margin: 18px 0; border: 0; border-top: 1px solid var(--line); }
+  .button { width: 100%; margin-top: 9px; padding: 10px 12px; border: 0; border-radius: 7px; font-size: 12px; font-weight: 700; }
+  .button.primary { background: var(--ink); color: #fff; }
+  .button.secondary { border: 1px solid var(--line); background: #fff; color: var(--ink); }
+  .button.small { width: auto; margin: 0; padding: 7px 10px; font-size: 11px; }
+  .recipe-io { display: flex; gap: 6px; margin-top: 6px; }
+  .recipe-io select { flex: 1; }
+  .save-status { min-height: 18px; margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+  .preview-section { margin-top: 18px; }
+  .preview-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .preview-head h2 { margin: 0; }
+  .preview-actions { display: flex; gap: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+  .batch { margin-bottom: 18px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+  .batch.drop-ready { border-color: var(--accent); background: var(--accent-soft); }
+  .batch.posted { opacity: .75; border-style: dashed; }
+  .batch-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .batch-name { margin: 0; font-size: 13px; font-weight: 700; }
+  .batch-name small { margin-left: 6px; color: var(--muted); font-size: 11px; font-weight: 400; }
+  .batch-actions { display: flex; gap: 6px; align-items: center; }
+  .batch-warning { margin: 0 0 10px; padding: 7px 10px; border-radius: 7px; background: #fdf3e6; color: #8a5a1b; font-size: 11px; line-height: 1.45; }
+  .batch-posted { margin: 0 0 10px; padding: 7px 10px; border-radius: 7px; background: #f2fbf5; color: #2f7a4c; font-size: 11px; }
+  .batch-posted a { color: inherit; }
+  .batch-caption { width: 100%; margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 11px; }
+  .card { position: relative; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; cursor: grab; }
+  .card:active { cursor: grabbing; }
+  .card.dragging { opacity: .4; outline: 2px dashed var(--accent); }
+  .slide-number { position: absolute; top: 7px; left: 7px; z-index: 2; display: grid; width: 20px; height: 20px; border-radius: 50%; place-items: center; background: rgba(37,35,31,.82); color: #fff; font-size: 10px; font-weight: 700; }
+  .card canvas { width: 100%; display: block; background: #fff; }
+  .card-body { padding: 10px; }
+  .card-title { font-size: 11px; color: var(--muted); margin: 0 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .card-actions .button { grid-column: span 1; }
+  .card.discarded { display: none; }
+  .card.saved { outline: 2px solid #2f7a4c; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div>
+      <a class="back" href="/">← Pin Studio</a>
+      <h1>Wardrobe</h1>
+      <p class="lede">Sort garments once, then generate outfits from it whenever you like.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="panel closet">
+      <p class="eyebrow">Closet</p>
+      <h2>Sort your wardrobe</h2>
+      <div class="upload-box">
+        <div class="section-row">
+          <div>
+            <label for="category">Add to section</label>
+            <select id="category"></select>
+          </div>
+          <button class="add-section" id="addSection" type="button">+ Section</button>
+        </div>
+        <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-controls="garmentFiles">
+          <strong>Drop garment photos here</strong>
+          <span>from your laptop, GPT or any website · multiple images welcome</span>
+        </div>
+        <input id="garmentFiles" type="file" accept="image/*" multiple>
+        <p class="upload-status" id="uploadStatus"></p>
+      </div>
+
+      <div class="tabs" id="tabs"></div>
+      <div class="toolbar">
+        <label><input type="checkbox" id="showArchived"> Show archived items</label>
+        <span class="upload-status" id="itemCount"></span>
+        <button class="button secondary small" id="deleteSection" type="button">Delete this section</button>
+      </div>
+      <div class="items" id="items"></div>
+    </section>
+
+    <aside class="panel recipe">
+      <p class="eyebrow">Generate</p>
+      <h2>Build a recipe</h2>
+      <div id="recipeRows"></div>
+
+      <div class="estimate" id="estimate">Add wardrobe items to get started.</div>
+      <button class="button primary" id="generate" disabled>Generate outfits</button>
+      <p class="save-status" id="generateStatus"></p>
+
+      <hr class="divider">
+      <label for="loadRecipe">Saved recipes</label>
+      <div class="recipe-io">
+        <select id="loadRecipe"><option value="">— none —</option></select>
+        <button class="button secondary small" id="deleteRecipe" type="button">Delete</button>
+      </div>
+      <button class="button secondary" id="saveRecipe" type="button">Save current recipe…</button>
+    </aside>
+  </div>
+
+  <section class="panel preview-section" id="previewSection" style="display:none">
+    <div class="preview-head">
+      <div>
+        <h2>Generated outfits</h2>
+        <p class="lede" style="margin-top:4px">Grouped into TikTok slideshows of 3 — drag a slide to reorder it, or into another batch to regroup.</p>
+        <p class="lede" id="previewCount" style="margin-top:3px"></p>
+      </div>
+      <div class="preview-actions">
+        <button class="button secondary small" id="archiveUsed" type="button">Archive items used</button>
+        <button class="button primary small" id="saveAll" type="button">Save all</button>
+      </div>
+    </div>
+    <div id="previewGrid"></div>
+  </section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const escapeHtml = value => String(value || '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+
+let sections = [];
+let items = [];
+let recipes = [];
+let filter = null;
+let showArchived = false;
+let previewPins = [];
+let slideshowGroups = [];
+
+// ---------- Closet ----------
+
+function activeItemsFor(category) {
+  return items.filter(item => item.category === category && !item.archived);
+}
+
+function sectionOptions(selectedId) {
+  return sections.map(section =>
+    `<option value="${escapeHtml(section.id)}" ${section.id === selectedId ? 'selected' : ''}>${escapeHtml(section.label)}</option>`
+  ).join('');
+}
+
+function renderCategorySelect() {
+  const current = $('category').value;
+  $('category').innerHTML = sectionOptions(sections.some(s => s.id === current) ? current : filter);
+}
+
+function renderTabs() {
+  $('tabs').innerHTML = sections.map(section => {
+    const count = activeItemsFor(section.id).length;
+    return `<button class="tab ${filter === section.id ? 'active' : ''}" data-category="${escapeHtml(section.id)}">${escapeHtml(section.label)}${count ? ` ${count}` : ''}</button>`;
+  }).join('');
+}
+
+function renderItems() {
+  renderTabs();
+  const shown = items.filter(item => item.category === filter && !!item.archived === showArchived);
+  $('itemCount').textContent = shown.length ? `${shown.length} item${shown.length === 1 ? '' : 's'}` : '';
+  const label = (sections.find(s => s.id === filter)?.label || 'items').toLowerCase();
+  $('items').innerHTML = shown.length ? shown.map(item => `
+    <div class="item ${item.archived ? 'archived' : ''}" data-id="${item.id}" draggable="true">
+      <span class="item-image"><img src="${item.cutoutUrl}" alt=""></span>
+      <span class="item-name">${escapeHtml(item.title)}</span>
+      <div class="item-actions">
+        <select class="item-section" aria-label="Move ${escapeHtml(item.title)}">${sectionOptions(item.category)}</select>
+        <button class="icon-btn ${item.archived ? 'restore' : 'archive'}" data-action="${item.archived ? 'restore' : 'archive'}" title="${item.archived ? 'Restore' : 'Archive'}">${item.archived ? '↺' : '☐'}</button>
+        <button class="icon-btn delete" data-action="delete" title="Delete">×</button>
+      </div>
+    </div>`).join('') : `<div class="empty">No ${showArchived ? 'archived ' : ''}${label} yet.</div>`;
+  renderRecipeRows();
+}
+
+$('tabs').addEventListener('click', event => {
+  const tab = event.target.closest('.tab');
+  if (!tab) return;
+  filter = tab.dataset.category;
+  renderItems();
+});
+
+$('items').addEventListener('change', async event => {
+  const selector = event.target.closest('.item-section');
+  if (!selector) return;
+  const card = selector.closest('.item');
+  const item = items.find(entry => entry.id === card.dataset.id);
+  const previous = item.category;
+  selector.disabled = true;
+  try {
+    const response = await fetch(`/api/wardrobe/items/${item.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: selector.value }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Move failed');
+    item.category = body.category;
+    renderItems();
+  } catch (error) {
+    selector.value = previous;
+    selector.disabled = false;
+    $('uploadStatus').textContent = `Could not move item: ${error.message}`;
+  }
+});
+
+$('items').addEventListener('click', async event => {
+  const button = event.target.closest('.icon-btn');
+  if (!button) return;
+  const card = button.closest('.item');
+  const item = items.find(entry => entry.id === card.dataset.id);
+  const action = button.dataset.action;
+  if (action === 'delete' && !confirm(`Delete ${item.title} from the wardrobe?`)) return;
+  button.disabled = true;
+  try {
+    if (action === 'delete') {
+      const response = await fetch(`/api/wardrobe/items/${item.id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error((await response.json()).error || 'Delete failed');
+      items = items.filter(entry => entry.id !== item.id);
+    } else {
+      const endpoint = action === 'archive' ? 'archive' : 'restore';
+      const response = await fetch(`/api/wardrobe/items/${endpoint}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [item.id] }),
+      });
+      if (!response.ok) throw new Error('Could not update item');
+      item.archived = action === 'archive';
+    }
+    renderItems();
+  } catch (error) {
+    button.disabled = false;
+    $('uploadStatus').textContent = error.message;
+  }
+});
+
+// Drag a wardrobe card onto a section tab to re-file it.
+$('items').addEventListener('dragstart', event => {
+  const card = event.target.closest('.item');
+  if (!card) return;
+  card.classList.add('dragging');
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('application/x-wardrobe-item', card.dataset.id);
+  event.dataTransfer.setData('text/plain', card.dataset.id);
+});
+$('items').addEventListener('dragend', event => {
+  event.target.closest('.item')?.classList.remove('dragging');
+  document.querySelectorAll('.tab.drop-ready').forEach(tab => tab.classList.remove('drop-ready'));
+});
+$('tabs').addEventListener('dragover', event => {
+  const tab = event.target.closest('.tab');
+  if (!tab || ![...event.dataTransfer.types].includes('application/x-wardrobe-item')) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  tab.classList.add('drop-ready');
+});
+$('tabs').addEventListener('dragleave', event => event.target.closest('.tab')?.classList.remove('drop-ready'));
+$('tabs').addEventListener('drop', async event => {
+  const tab = event.target.closest('.tab');
+  const itemId = event.dataTransfer.getData('application/x-wardrobe-item');
+  if (!tab || !itemId) return;
+  event.preventDefault();
+  tab.classList.remove('drop-ready');
+  const category = tab.dataset.category;
+  const item = items.find(entry => entry.id === itemId);
+  if (!item || item.category === category) return;
+  try {
+    const response = await fetch(`/api/wardrobe/items/${itemId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Move failed');
+    item.category = body.category;
+    renderItems();
+  } catch (error) {
+    $('uploadStatus').textContent = `Could not move item: ${error.message}`;
+  }
+});
+
+$('showArchived').addEventListener('change', event => {
+  showArchived = event.target.checked;
+  renderItems();
+});
+
+$('deleteSection').addEventListener('click', async () => {
+  const section = sections.find(entry => entry.id === filter);
+  if (!section) return;
+  if (sections.length <= 1) {
+    $('uploadStatus').textContent = 'The wardrobe needs at least one section.';
+    return;
+  }
+
+  // Deleting the folder deletes what's in it, so offer somewhere to put them.
+  const held = items.filter(item => item.category === section.id);
+  let moveTo = '';
+  if (held.length) {
+    const others = sections.filter(entry => entry.id !== section.id);
+    const choice = prompt(
+      `"${section.label}" holds ${held.length} item${held.length === 1 ? '' : 's'}.\n\n`
+      + `Type a section to move them to:\n${others.map(entry => `  ${entry.label}`).join('\n')}\n\n`
+      + 'Or leave this blank to delete them along with the section.',
+      others[0]?.label || '',
+    );
+    if (choice === null) return;
+    if (choice.trim()) {
+      const target = others.find(entry => entry.label.toLowerCase() === choice.trim().toLowerCase());
+      if (!target) {
+        $('uploadStatus').textContent = `No section called "${choice.trim()}" — nothing deleted.`;
+        return;
+      }
+      moveTo = target.id;
+    } else if (!confirm(`Delete "${section.label}" and its ${held.length} item${held.length === 1 ? '' : 's'} for good?`)) {
+      return;
+    }
+  } else if (!confirm(`Delete the "${section.label}" section?`)) {
+    return;
+  }
+
+  $('deleteSection').disabled = true;
+  try {
+    const query = moveTo ? `?moveTo=${encodeURIComponent(moveTo)}` : '';
+    const response = await fetch(`/api/wardrobe/sections/${encodeURIComponent(section.id)}${query}`, { method: 'DELETE' });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Could not delete section');
+    sections = body.sections;
+    items = body.items;
+    recipes = body.recipes;
+    filter = sections[0]?.id || null;
+    renderCategorySelect();
+    renderItems();
+    renderRecipeOptions();
+    $('uploadStatus').textContent = moveTo
+      ? `"${section.label}" deleted — its items were moved.`
+      : `"${section.label}" deleted.`;
+  } catch (error) {
+    $('uploadStatus').textContent = error.message;
+  } finally {
+    $('deleteSection').disabled = false;
+  }
+});
+
+$('addSection').addEventListener('click', async () => {
+  const label = prompt('Name the new wardrobe section:');
+  if (!label?.trim()) return;
+  $('addSection').disabled = true;
+  try {
+    const response = await fetch('/api/wardrobe/sections', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: label.trim() }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Could not add section');
+    sections.push(body);
+    filter = body.id;
+    renderCategorySelect();
+    $('category').value = body.id;
+    renderItems();
+  } catch (error) {
+    $('uploadStatus').textContent = `Could not add section: ${error.message}`;
+  } finally { $('addSection').disabled = false; }
+});
+
+// ---------- Upload (drop zone) ----------
+
+let uploadInProgress = false;
+
+function droppedImageSources(dataTransfer) {
+  const imageCandidates = [];
+  const fallbackCandidates = [];
+  const html = dataTransfer.getData('text/html');
+  if (html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('img').forEach(image => {
+      if (image.src) imageCandidates.push(image.src);
+      const srcset = image.getAttribute('srcset');
+      if (srcset) imageCandidates.push(...srcset.split(',').map(entry => entry.trim().split(/\s+/)[0]));
+    });
+    doc.querySelectorAll('source[srcset]').forEach(source => {
+      imageCandidates.push(...source.getAttribute('srcset').split(',').map(entry => entry.trim().split(/\s+/)[0]));
+    });
+  }
+  const downloadUrl = dataTransfer.getData('DownloadURL');
+  const downloadMatch = downloadUrl.match(/^[^:]+:[^:]*:(https?:.*)$/i);
+  if (downloadMatch) imageCandidates.push(downloadMatch[1]);
+  const uriList = dataTransfer.getData('text/uri-list');
+  if (uriList) fallbackCandidates.push(...uriList.split('\n').map(v => v.trim()).filter(v => v && !v.startsWith('#')));
+  const plain = dataTransfer.getData('text/plain').trim();
+  if (/^(https:|blob:|data:image\/)/i.test(plain)) fallbackCandidates.push(plain);
+
+  const browserUrls = [...new Set([...imageCandidates, ...fallbackCandidates].filter(v => /^(blob:|data:image\/)/i.test(v)))];
+  let remoteUrls = [...new Set(imageCandidates.filter(v => { try { return new URL(v).protocol === 'https:'; } catch { return false; } }))];
+  if (!remoteUrls.length) {
+    remoteUrls = [...new Set(fallbackCandidates.filter(v => { try { return new URL(v).protocol === 'https:'; } catch { return false; } }))];
+  }
+  const quality = value => {
+    if (value.includes('/originals/')) return 100000;
+    const size = value.match(/\/(\d+)x(?:\d+)?\//);
+    return size ? Number(size[1]) : 0;
+  };
+  remoteUrls.sort((a, b) => quality(b) - quality(a));
+  return { browserUrls: browserUrls.slice(0, 1), remoteUrls: remoteUrls.slice(0, 1) };
+}
+
+async function materializeBrowserImages(urls) {
+  const files = [];
+  for (const [index, url] of urls.entries()) {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) continue;
+      const extension = blob.type.split('/')[1].replace('jpeg', 'jpg').split('+')[0] || 'png';
+      files.push(new File([blob], `dropped-image-${index + 1}.${extension}`, { type: blob.type }));
+    } catch (error) { /* cross-origin blob URLs sometimes can't leave their tab */ }
+  }
+  return files;
+}
+
+async function handleDroppedImages(dataTransfer) {
+  const itemFiles = [...(dataTransfer.items || [])].filter(item => item.kind === 'file').map(item => item.getAsFile()).filter(Boolean);
+  const directFiles = [...dataTransfer.files];
+  const sources = droppedImageSources(dataTransfer);
+  const browserFiles = directFiles.length || itemFiles.length ? [] : await materializeBrowserImages(sources.browserUrls);
+  const files = [...directFiles, ...itemFiles, ...browserFiles].filter((file, index, all) =>
+    all.findIndex(other => other.name === file.name && other.size === file.size) === index
+  );
+  uploadGarments(files, files.length ? [] : sources.remoteUrls);
+}
+
+async function uploadGarments(incomingFiles = [], remoteUrls = []) {
+  if (uploadInProgress) return;
+  const files = [...incomingFiles].filter(file => file.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|gif)$/i.test(file.name));
+  if (!files.length && !remoteUrls.length) {
+    $('uploadStatus').textContent = 'No downloadable image was found. Drag the picture itself rather than its surrounding page.';
+    return;
+  }
+  uploadInProgress = true;
+  $('dropZone').classList.add('busy');
+  const data = new FormData();
+  data.append('category', $('category').value);
+  files.forEach(file => data.append('files', file));
+  remoteUrls.forEach(url => data.append('image_urls', url));
+  const total = files.length + remoteUrls.length;
+  $('uploadStatus').textContent = `${remoteUrls.length ? 'Downloading and r' : 'R'}emoving background${total > 1 ? 's' : ''}… this can take a moment.`;
+  try {
+    const response = await fetch('/api/wardrobe/items', { method: 'POST', body: data });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Upload failed');
+    items.push(...body.items);
+    filter = $('category').value;
+    renderItems();
+    $('uploadStatus').textContent = `${body.items.length} transparent cutout${body.items.length === 1 ? '' : 's'} added.`
+      + (body.errors?.length ? ` ${body.errors.length} image${body.errors.length === 1 ? '' : 's'} could not be processed.` : '');
+  } catch (error) {
+    $('uploadStatus').textContent = `Could not add image: ${error.message}`;
+  } finally {
+    uploadInProgress = false;
+    $('dropZone').classList.remove('busy', 'drag-over');
+  }
+}
+
+$('garmentFiles').addEventListener('change', event => {
+  const files = [...event.target.files];
+  event.target.value = '';
+  uploadGarments(files);
+});
+$('dropZone').addEventListener('click', () => $('garmentFiles').click());
+$('dropZone').addEventListener('keydown', event => {
+  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $('garmentFiles').click(); }
+});
+['dragenter', 'dragover'].forEach(name => $('dropZone').addEventListener(name, event => {
+  event.preventDefault();
+  if (!uploadInProgress) $('dropZone').classList.add('drag-over');
+}));
+$('dropZone').addEventListener('dragleave', event => {
+  if (!event.relatedTarget || !$('dropZone').contains(event.relatedTarget)) $('dropZone').classList.remove('drag-over');
+});
+$('dropZone').addEventListener('drop', event => {
+  event.preventDefault();
+  $('dropZone').classList.remove('drag-over');
+  handleDroppedImages(event.dataTransfer);
+});
+window.addEventListener('dragover', event => {
+  const types = [...event.dataTransfer.types];
+  if (types.includes('Files') || types.includes('text/uri-list') || types.includes('text/html') || types.includes('text/plain')) event.preventDefault();
+});
+window.addEventListener('drop', event => {
+  const types = [...event.dataTransfer.types];
+  const externalImage = types.includes('Files') || types.includes('text/uri-list') || types.includes('text/html') || types.includes('text/plain');
+  if (externalImage && !types.includes('application/x-wardrobe-item') && !event.target.closest('#dropZone')) {
+    event.preventDefault();
+    $('uploadStatus').textContent = 'Drop images inside the upload box.';
+  }
+});
+
+// ---------- Recipe / generate ----------
+
+function renderRecipeRows() {
+  const existing = {};
+  document.querySelectorAll('.recipe-row').forEach(row => {
+    existing[row.dataset.category] = {
+      combine: row.querySelector('.combine-toggle').checked,
+      count: row.querySelector('.random-count').value,
+    };
+  });
+  $('recipeRows').innerHTML = sections.map(section => {
+    const available = activeItemsFor(section.id).length;
+    const previous = existing[section.id] || { combine: false, count: 1 };
+    return `
+    <div class="recipe-row" data-category="${escapeHtml(section.id)}">
+      <div>
+        <span class="recipe-label">${escapeHtml(section.label)}<small>${available} available</small></span>
+        <label class="recipe-combine"><input type="checkbox" class="combine-toggle" ${previous.combine ? 'checked' : ''}> Combine all</label>
+      </div>
+      <input type="number" class="random-count" min="0" max="6" value="${escapeHtml(String(previous.count))}" ${previous.combine ? 'disabled' : ''}>
+    </div>`;
+  }).join('');
+  updateEstimate();
+}
+
+$('recipeRows').addEventListener('change', event => {
+  if (event.target.classList.contains('combine-toggle')) {
+    const countInput = event.target.closest('.recipe-row').querySelector('.random-count');
+    countInput.disabled = event.target.checked;
+  }
+  updateEstimate();
+});
+$('recipeRows').addEventListener('input', event => {
+  if (event.target.classList.contains('random-count')) updateEstimate();
+});
+
+function currentRecipe() {
+  const combine = [];
+  const random = {};
+  document.querySelectorAll('.recipe-row').forEach(row => {
+    const category = row.dataset.category;
+    if (row.querySelector('.combine-toggle').checked) {
+      combine.push(category);
+    } else {
+      const count = Number(row.querySelector('.random-count').value) || 0;
+      if (count > 0) random[category] = count;
+    }
+  });
+  return { combine, random };
+}
+
+function updateEstimate() {
+  const { combine, random } = currentRecipe();
+  const estimateEl = $('estimate');
+  const generateBtn = $('generate');
+  if (!combine.length && !Object.keys(random).length) {
+    estimateEl.className = 'estimate';
+    estimateEl.textContent = 'Combine at least one section, or set a random count, to generate outfits.';
+    generateBtn.disabled = true;
+    return;
+  }
+  let combos = 1;
+  for (const category of combine) {
+    const available = activeItemsFor(category).length;
+    if (!available) {
+      estimateEl.className = 'estimate warn';
+      const label = sections.find(s => s.id === category)?.label || category;
+      estimateEl.textContent = `No available ${label.toLowerCase()} to combine.`;
+      generateBtn.disabled = true;
+      return;
+    }
+    combos *= available;
+  }
+  for (const [category, count] of Object.entries(random)) {
+    const available = activeItemsFor(category).length;
+    if (available < count) {
+      estimateEl.className = 'estimate warn';
+      const label = sections.find(s => s.id === category)?.label || category;
+      estimateEl.textContent = `Only ${available} available ${label.toLowerCase()}, but the recipe asks for ${count}.`;
+      generateBtn.disabled = true;
+      return;
+    }
+  }
+  const MAX_COMBINATIONS = 24;
+  if (combos > MAX_COMBINATIONS) {
+    estimateEl.className = 'estimate warn';
+    estimateEl.textContent = `That's ${combos} outfits — narrow the combined sections or archive some items (max ${MAX_COMBINATIONS} per batch).`;
+    generateBtn.disabled = true;
+    return;
+  }
+  estimateEl.className = 'estimate';
+  estimateEl.textContent = `Ready to generate ${combos} outfit${combos === 1 ? '' : 's'}.`;
+  generateBtn.disabled = false;
+}
+
+$('generate').addEventListener('click', async () => {
+  const { combine, random } = currentRecipe();
+  $('generate').disabled = true;
+  $('generateStatus').textContent = 'Generating…';
+  try {
+    const response = await fetch('/api/wardrobe/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ combine, random }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Generate failed');
+    await syncPreview();  // shows the new batches alongside anything still outstanding
+    const made = body.pins.length;
+    $('generateStatus').textContent = `${made} outfit${made === 1 ? '' : 's'} generated — see the slideshows below.`;
+    $('previewSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (error) {
+    $('generateStatus').textContent = `Could not generate: ${error.message}`;
+  } finally {
+    updateEstimate();
+  }
+});
+
+$('saveRecipe').addEventListener('click', async () => {
+  const name = prompt('Name this recipe:');
+  if (!name?.trim()) return;
+  const { combine, random } = currentRecipe();
+  try {
+    const response = await fetch('/api/wardrobe/recipes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim(), combine, random }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Could not save recipe');
+    recipes.push(body);
+    renderRecipeOptions();
+    $('loadRecipe').value = body.id;
+  } catch (error) {
+    $('generateStatus').textContent = error.message;
+  }
+});
+
+function renderRecipeOptions() {
+  $('loadRecipe').innerHTML = '<option value="">— none —</option>' + recipes.map(recipe =>
+    `<option value="${recipe.id}">${escapeHtml(recipe.name)}</option>`
+  ).join('');
+}
+
+$('loadRecipe').addEventListener('change', () => {
+  const recipe = recipes.find(entry => entry.id === $('loadRecipe').value);
+  if (!recipe) return;
+  document.querySelectorAll('.recipe-row').forEach(row => {
+    const category = row.dataset.category;
+    const combine = row.querySelector('.combine-toggle');
+    const count = row.querySelector('.random-count');
+    combine.checked = recipe.combine.includes(category);
+    count.disabled = combine.checked;
+    count.value = recipe.random[category] ?? (combine.checked ? count.value : 1);
+  });
+  updateEstimate();
+});
+
+$('deleteRecipe').addEventListener('click', async () => {
+  const id = $('loadRecipe').value;
+  if (!id) return;
+  await fetch(`/api/wardrobe/recipes/${id}`, { method: 'DELETE' });
+  recipes = recipes.filter(recipe => recipe.id !== id);
+  renderRecipeOptions();
+});
+
+// ---------- Preview grid ----------
+
+function drawPreviewBackground(ctx, width, height, backgroundChoice) {
+  const solids = { white: '#ffffff', blush: '#efdde0', cream: '#f5efe6', sage: '#dfe6dc', blue: '#dce7ec', gingham: '#f7f2eb' };
+  if (backgroundChoice === 'warm-paper') {
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, '#f7f1e7'); gradient.addColorStop(1, '#eee1ce');
+    ctx.fillStyle = gradient;
+  } else ctx.fillStyle = solids[backgroundChoice] || '#dce7ec';
+  ctx.fillRect(0, 0, width, height);
+}
+
+async function renderCard(pin, canvas) {
+  const scale = canvas.width / 500;
+  const ctx = canvas.getContext('2d');
+  drawPreviewBackground(ctx, canvas.width, canvas.height, pin.layout?.backgroundChoice);
+  const byId = Object.fromEntries(pin.products.map(product => [product.id, product]));
+  const layers = [...(pin.layout?.layers || [])].sort((a, b) => a.zIndex - b.zIndex);
+  for (const layer of layers) {
+    const product = byId[layer.productId];
+    if (!product) continue;
+    const image = await loadImage(product.cutoutUrl);
+    ctx.save();
+    ctx.translate((layer.x + layer.w / 2) * scale, (layer.y + layer.h / 2) * scale);
+    ctx.rotate((layer.rotation || 0) * Math.PI / 180);
+    const ratio = Math.min((layer.w * scale) / image.naturalWidth, (layer.h * scale) / image.naturalHeight);
+    const width = image.naturalWidth * ratio, height = image.naturalHeight * ratio;
+    ctx.drawImage(image, -width / 2, -height / 2, width, height);
+    ctx.restore();
+  }
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+function cardMarkup(pin, saved, position) {
+  const names = pin.products.map(p => p.title).join(' · ');
+  return `
+    <div class="card ${saved ? 'saved' : ''}" data-slug="${pin.slug}" draggable="true">
+      <span class="slide-number">${position}</span>
+      <canvas width="240" height="360"></canvas>
+      <div class="card-body">
+        <p class="card-title" title="${escapeHtml(names)}">${escapeHtml(names)}</p>
+        <div class="card-actions">
+          ${(pin.generated_from?.random || []).length ? '<button class="button secondary" data-action="reroll">Reroll</button>' : '<span></span>'}
+          <button class="button secondary" data-action="edit">Edit</button>
+          <button class="button primary" data-action="save">Save</button>
+          <button class="button secondary" data-action="discard">Discard</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderPreview() {
+  const byslug = Object.fromEntries(previewPins.map(pin => [pin.slug, pin]));
+  // Anything still to go out comes first; already-posted batches sink below.
+  const ordered = [...slideshowGroups]
+    .filter(show => show.slides.length)
+    .sort((left, right) => Number(!!left.postedAt) - Number(!!right.postedAt));
+  $('previewSection').style.display = ordered.length ? '' : 'none';
+
+  const waiting = ordered.filter(show => !show.postedAt).length;
+  $('previewCount').textContent = waiting
+    ? `${waiting} slideshow${waiting === 1 ? '' : 's'} still to post`
+    : 'All slideshows posted.';
+
+  $('previewGrid').innerHTML = ordered.map((show, index) => {
+    const slides = show.slides.map(slide => byslug[slide.slug]).filter(Boolean);
+    if (!slides.length) return '';
+    const posted = !!show.postedAt;
+    const drafted = !posted && !!show.draftedAt;
+    const done = posted || drafted;
+    return `
+    <div class="batch ${done ? 'posted' : ''}" data-id="${show.id}">
+      <div class="batch-head">
+        <p class="batch-name">Slideshow ${index + 1}<small>${slides.length} slide${slides.length === 1 ? '' : 's'}</small></p>
+        <div class="batch-actions">
+          ${done ? '' : `
+            <button class="button secondary small" data-batch-action="draft" ${show.ready ? '' : 'disabled'} title="Send to your TikTok drafts to finish in the app">Send to drafts</button>
+            <button class="button primary small" data-batch-action="post" ${show.ready ? '' : 'disabled'} title="${show.ready ? 'Post these slides to TikTok' : 'Save every slide first'}">Post to TikTok</button>`}
+        </div>
+      </div>
+      ${show.warnings.map(warning => `<p class="batch-warning">${escapeHtml(warning)}</p>`).join('')}
+      ${posted ? `<p class="batch-posted">Posted to TikTok${show.tiktokUrl ? ` — <a href="${escapeHtml(show.tiktokUrl)}" target="_blank" rel="noopener">view</a>` : ''}</p>` : ''}
+      ${drafted ? `<p class="batch-warning">Sent to TikTok's Creator Inbox, not your profile — open the TikTok app,
+        go to the <strong>Inbox / notifications</strong> tab, and tap the notification about uploaded content to
+        finish posting. Zernio will call this "published" because it delivered it; it isn't live until you post it there.
+        <button class="button secondary small" data-batch-action="undraft" style="margin-top:8px">Didn't arrive — let me try posting directly</button></p>` : ''}
+      ${done ? '' : `<input class="batch-caption" type="text" placeholder="Caption for this slideshow…" value="${escapeHtml(show.caption || '')}">`}
+      <div class="grid">${slides.map((pin, position) => cardMarkup(pin, !show.unrendered.includes(pin.slug), position + 1)).join('')}</div>
+    </div>`;
+  }).join('');
+
+  previewPins.forEach(pin => {
+    const card = $('previewGrid').querySelector(`.card[data-slug="${pin.slug}"]`);
+    if (card) renderCard(pin, card.querySelector('canvas'));
+  });
+}
+
+function currentArrangement() {
+  return [...$('previewGrid').querySelectorAll('.batch')].map(batch => ({
+    id: batch.dataset.id,
+    slugs: [...batch.querySelectorAll('.card')].map(card => card.dataset.slug),
+  }));
+}
+
+async function persistArrangement() {
+  try {
+    const response = await fetch('/api/slideshows', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slideshows: currentArrangement() }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Could not regroup');
+    slideshowGroups = body;
+    renderPreview();
+  } catch (error) {
+    $('generateStatus').textContent = error.message;
+  }
+}
+
+// Slides are sortable: drag to reorder within a batch, or across into another.
+// The card follows the pointer live, so the arrangement you see when you let
+// go is the one that gets saved.
+let dragDropped = false;
+
+function slideBefore(grid, x, y) {
+  // Which card the dragged one should land in front of. Cards wrap across
+  // rows, so an earlier row wins outright and within a row it's the halfway
+  // point that decides. Null means "past everything — put it last".
+  for (const card of grid.querySelectorAll('.card:not(.dragging)')) {
+    const box = card.getBoundingClientRect();
+    if (y < box.top) return card;
+    if (y <= box.bottom && x < box.left + box.width / 2) return card;
+  }
+  return null;
+}
+
+$('previewGrid').addEventListener('dragstart', event => {
+  const card = event.target.closest('.card');
+  if (!card || card.closest('.batch.posted') || event.target.closest('button')) {
+    event.preventDefault();
+    return;
+  }
+  dragDropped = false;
+  card.classList.add('dragging');
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('application/x-slideshow-slide', card.dataset.slug);
+});
+
+$('previewGrid').addEventListener('dragend', event => {
+  event.target.closest('.card')?.classList.remove('dragging');
+  document.querySelectorAll('.batch.drop-ready').forEach(batch => batch.classList.remove('drop-ready'));
+  // Cancelled mid-drag (Esc, or dropped nowhere): the live preview moved the
+  // card but nothing was saved, so put the rendered order back.
+  if (!dragDropped) renderPreview();
+});
+
+$('previewGrid').addEventListener('dragover', event => {
+  const batch = event.target.closest('.batch');
+  if (!batch || batch.classList.contains('posted')) return;
+  if (![...event.dataTransfer.types].includes('application/x-slideshow-slide')) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+
+  const dragging = $('previewGrid').querySelector('.card.dragging');
+  if (!dragging) return;
+  document.querySelectorAll('.batch.drop-ready').forEach(other => other.classList.remove('drop-ready'));
+  if (batch !== dragging.closest('.batch')) batch.classList.add('drop-ready');
+
+  const grid = batch.querySelector('.grid');
+  const before = slideBefore(grid, event.clientX, event.clientY);
+  if (before) grid.insertBefore(dragging, before);
+  else grid.appendChild(dragging);
+  renumberSlides();
+});
+
+$('previewGrid').addEventListener('drop', event => {
+  if (![...event.dataTransfer.types].includes('application/x-slideshow-slide')) return;
+  event.preventDefault();
+  dragDropped = true;
+  document.querySelectorAll('.batch.drop-ready').forEach(batch => batch.classList.remove('drop-ready'));
+  persistArrangement();
+});
+
+function renumberSlides() {
+  $('previewGrid').querySelectorAll('.batch').forEach(batch => {
+    batch.querySelectorAll('.card').forEach((card, index) => {
+      const badge = card.querySelector('.slide-number');
+      if (badge) badge.textContent = index + 1;
+    });
+    const slides = batch.querySelectorAll('.card').length;
+    const count = batch.querySelector('.batch-name small');
+    if (count) count.textContent = `${slides} slide${slides === 1 ? '' : 's'}`;
+  });
+}
+
+$('previewGrid').addEventListener('change', async event => {
+  const caption = event.target.closest('.batch-caption');
+  if (!caption) return;
+  const id = caption.closest('.batch').dataset.id;
+  await fetch(`/api/slideshows/${id}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ caption: caption.value }),
+  });
+  const show = slideshowGroups.find(entry => entry.id === id);
+  if (show) show.caption = caption.value;
+});
+
+$('previewGrid').addEventListener('click', async event => {
+  const button = event.target.closest('button[data-batch-action]');
+  if (!button) return;
+  const batch = button.closest('.batch');
+  const id = batch.dataset.id;
+  const caption = batch.querySelector('.batch-caption')?.value || '';
+  // Clearing the draft mark makes the batch postable again — for when the
+  // Creator Inbox delivery never showed up, or was discarded in the app.
+  if (button.dataset.batchAction === 'undraft') {
+    if (!confirm('Mark this slideshow as not sent, so it can be posted again?\n\n'
+      + 'Only do this if the draft never arrived in TikTok, or you deleted it there — '
+      + 'otherwise you may end up posting it twice.')) return;
+    await fetch(`/api/slideshows/${batch.dataset.id}/undraft`, { method: 'POST' });
+    await syncPreview();
+    return;
+  }
+
+  const asDraft = button.dataset.batchAction === 'draft';
+  const label = button.textContent;
+  if (!confirm(asDraft
+    ? 'Send these slides to your TikTok drafts to finish in the app?'
+    : 'Post these slides to TikTok as one slideshow?')) return;
+
+  button.disabled = true;
+  button.textContent = asDraft ? 'Sending…' : 'Posting…';
+  try {
+    const response = await fetch(`/api/slideshows/${id}/post`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ caption, draft: asDraft }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Post failed');
+    await syncPreview();
+    if (body.draftedAt && !body.tiktokUrl) {
+      $('generateStatus').textContent =
+        'TikTok direct posting was unavailable, so the slideshow went to your TikTok drafts — open the app to publish it.';
+    }
+  } catch (error) {
+    alert(error.message);
+    button.disabled = false;
+    button.textContent = label;
+  }
+});
+
+// Slideshows outlive the generate run that made them, so the page rebuilds
+// them from the server on load — otherwise a refresh hides everything still
+// waiting to be posted, with no way back to it.
+async function syncPreview() {
+  const response = await fetch('/api/slideshows');
+  if (!response.ok) return;
+  slideshowGroups = await response.json();
+  const slugs = [...new Set(slideshowGroups.flatMap(show => show.slides.map(slide => slide.slug)))];
+  const fetched = await Promise.all(slugs.map(slug =>
+    fetch(`/api/pins/${slug}`).then(pin => pin.ok ? pin.json() : null)
+  ));
+  previewPins = fetched.filter(Boolean);
+  renderPreview();
+}
+
+$('previewGrid').addEventListener('click', async event => {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+  const card = button.closest('.card');
+  const slug = card.dataset.slug;
+  const pin = previewPins.find(entry => entry.slug === slug);
+  const action = button.dataset.action;
+
+  // New tab: the generated batch only lives in this page's memory, so
+  // navigating away would lose it and force a regenerate to edit the next one.
+  if (action === 'edit') { window.open(`/outfit/${slug}`, '_blank', 'noopener'); return; }
+
+  button.disabled = true;
+  try {
+    if (action === 'reroll') {
+      const response = await fetch(`/api/pins/${slug}/reroll`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || 'Reroll failed');
+      Object.assign(pin, body);
+      await renderCard(pin, card.querySelector('canvas'));
+    } else if (action === 'save') {
+      await savePinCard(pin, card);
+      await syncPreview();  // a saved slide makes its batch postable
+    } else if (action === 'discard') {
+      if (!confirm('Discard this generated outfit?')) return;
+      await fetch(`/api/pins/${slug}`, { method: 'DELETE' });
+      previewPins = previewPins.filter(entry => entry.slug !== slug);
+      await syncPreview();
+    }
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+async function refreshPin(slug) {
+  const response = await fetch(`/api/pins/${slug}`);
+  if (!response.ok) return null;
+  const fresh = await response.json();
+  const index = previewPins.findIndex(pin => pin.slug === slug);
+  if (index >= 0) previewPins[index] = fresh;
+  return fresh;
+}
+
+async function savePinCard(pin, card) {
+  // Edit opens the builder in another tab, so the stored layout may have moved
+  // on since this card was generated. Render what's on the server rather than
+  // the copy held here, or saving would undo those adjustments.
+  const fresh = (await refreshPin(pin.slug)) || pin;
+  const canvas = document.createElement('canvas');
+  canvas.width = 1000; canvas.height = 1500;
+  await renderCard(fresh, canvas);
+  const hotspots = (fresh.layout?.layers || []).filter(layer => layer.url).map(layer => ({
+    leftPct: layer.x / 5, topPct: layer.y / 7.5, widthPct: layer.w / 5, heightPct: layer.h / 7.5,
+    url: layer.url, regionalUrls: layer.regionalUrls,
+  }));
+  const response = await fetch(`/api/pins/${fresh.slug}/save`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: canvas.toDataURL('image/png'), layout: fresh.layout, hotspots }),
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || 'Save failed');
+  card.classList.add('saved');
+}
+
+document.addEventListener('visibilitychange', () => {
+  // Coming back from an Edit tab, the thumbnails here are out of date.
+  if (document.visibilityState === 'visible') syncPreview();
+});
+
+$('saveAll').addEventListener('click', async () => {
+  $('saveAll').disabled = true;
+  const alreadySaved = new Set(slideshowGroups.flatMap(show =>
+    show.slides.map(slide => slide.slug).filter(slug => !show.unrendered.includes(slug))
+  ));
+  for (const pin of previewPins) {
+    const card = $('previewGrid').querySelector(`.card[data-slug="${pin.slug}"]`);
+    if (!card || alreadySaved.has(pin.slug)) continue;
+    try { await savePinCard(pin, card); } catch (error) { /* keep going with the rest */ }
+  }
+  await syncPreview();
+  $('saveAll').disabled = false;
+});
+
+$('archiveUsed').addEventListener('click', async () => {
+  const ids = [...new Set(previewPins.flatMap(pin => pin.products.map(product => product.wardrobeItemId).filter(Boolean)))];
+  if (!ids.length) return;
+  if (!confirm(`Archive the ${ids.length} wardrobe item${ids.length === 1 ? '' : 's'} used in this batch?`)) return;
+  await fetch('/api/wardrobe/items/archive', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  await load();
+});
+
+// ---------- Load ----------
+
+async function warnIfServerIsStale() {
+  try {
+    const config = await (await fetch('/api/config')).json();
+    if (config.sourceMtime && config.startedAt && config.sourceMtime > config.startedAt) {
+      $('generateStatus').textContent =
+        'This server was started before the latest code change — restart python app.py, '
+        + 'or what you see here is the old behaviour.';
+    }
+  } catch (error) { /* the banner is a nicety, never a blocker */ }
+}
+
+async function load() {
+  warnIfServerIsStale();
+  const response = await fetch('/api/wardrobe');
+  const data = await response.json();
+  sections = data.sections;
+  items = data.items;
+  recipes = data.recipes;
+  if (!filter || !sections.some(section => section.id === filter)) filter = sections[0]?.id || null;
+  renderCategorySelect();
+  renderItems();
+  renderRecipeOptions();
+  await syncPreview();
+}
+load();
+</script>
+</body>
+</html>

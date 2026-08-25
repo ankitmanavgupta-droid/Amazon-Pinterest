@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outfit Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Italiana&family=Parisienne&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --ink: #25231f; --muted: #77736b; --paper: #fbfaf7; --line: #e6e2da;
+    --accent: #9c4c5f; --accent-soft: #f5e7ea; --panel: #fff;
+  }
+  body { margin: 0; height: 100vh; overflow: hidden; font-family: 'DM Sans', sans-serif; color: var(--ink); background: #efede8; }
+  button, input, select { font: inherit; }
+  button { cursor: pointer; }
+  .app {
+    --left-panel-width: 330px; --right-panel-width: 280px;
+    min-width: 1024px; height: 100vh; display: grid;
+    grid-template-columns: var(--left-panel-width) 8px minmax(540px, 1fr) 8px var(--right-panel-width);
+  }
+  .panel { background: var(--panel); overflow-y: auto; }
+  .column-resizer { position: relative; z-index: 1200; background: #f3f0ea; cursor: col-resize; touch-action: none; }
+  .column-resizer::after { content: ''; position: absolute; top: 50%; left: 2px; width: 4px; height: 46px; border-radius: 99px; background: #c9c2b8; transform: translateY(-50%); transition: background .15s, height .15s; }
+  .column-resizer:hover::after, .column-resizer.dragging::after, .column-resizer:focus-visible::after { height: 68px; background: var(--accent); }
+  .column-resizer:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  body.resizing-columns { cursor: col-resize; user-select: none; }
+  .panel-inner { padding: 22px; }
+  .back { color: var(--accent); font-size: 12px; text-decoration: none; }
+  h1 { margin: 12px 0 3px; font: 32px/1 'Italiana', serif; font-weight: 400; }
+  .lede { margin: 0 0 20px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .eyebrow { margin: 0 0 10px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  label { display: block; margin: 13px 0 5px; font-size: 11px; font-weight: 700; }
+  input[type=text], select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--ink); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .upload-box { padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+  .upload-box label:first-child { margin-top: 0; }
+  .section-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; align-items: end; }
+  .section-row label { margin-top: 0; }
+  .add-section { height: 37px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--accent); font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .drop-zone { margin-top: 12px; padding: 20px 12px; border: 2px dashed #c8c1b6; border-radius: 9px; background: #fff; color: var(--muted); text-align: center; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
+  .drop-zone:hover, .drop-zone:focus-visible { border-color: var(--accent); outline: 0; background: var(--accent-soft); }
+  .drop-zone.drag-over { border-color: var(--accent); background: var(--accent-soft); transform: scale(1.015); }
+  .drop-zone.busy { opacity: .6; cursor: wait; pointer-events: none; }
+  .drop-icon { display: grid; width: 34px; height: 34px; margin: 0 auto 8px; border-radius: 50%; place-items: center; background: var(--ink); color: #fff; font-size: 20px; line-height: 1; }
+  .drop-zone strong { display: block; color: var(--ink); font-size: 12px; }
+  .drop-zone span:last-child { display: block; margin-top: 3px; font-size: 10px; }
+  #garmentFiles { display: none; }
+  .upload-status { min-height: 18px; margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+  .tabs { display: flex; gap: 6px; margin: 18px 0 12px; overflow-x: auto; padding-bottom: 2px; }
+  .tab { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; background: #fff; color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .tab.active { border-color: var(--ink); background: var(--ink); color: #fff; }
+  .items { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; }
+  .item { position: relative; padding: 7px; border: 1px solid var(--line); border-radius: 10px; background: #fff; text-align: left; }
+  .item:hover { border-color: #aaa39a; }
+  .item.dragging { opacity: .45; }
+  .item.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: var(--accent-soft); }
+  .item-toggle { width: 100%; padding: 0; border: 0; background: transparent; text-align: left; }
+  .item-image { aspect-ratio: 1; display: grid; place-items: center; border-radius: 7px; overflow: hidden; background-color: #fafafa; background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%); background-size: 12px 12px; background-position: 0 0,0 6px,6px -6px,-6px 0; }
+  .item img { width: 90%; height: 90%; object-fit: contain; }
+  .item-name { display: block; margin-top: 6px; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+  .item-mark { position: absolute; top: 12px; right: 12px; display: none; width: 20px; height: 20px; border-radius: 50%; place-items: center; background: var(--accent); color: #fff; font-size: 13px; }
+  .item.active .item-mark { display: grid; }
+  .item-actions { display: grid; grid-template-columns: minmax(0, 1fr) 27px; gap: 5px; margin-top: 7px; }
+  .item-section { min-width: 0; height: 27px; padding: 3px 5px; border-radius: 5px; font-size: 9px; }
+  .item-delete { width: 27px; height: 27px; padding: 0; border: 1px solid #f1caca; border-radius: 5px; background: #fff5f5; color: #a52e35; font-size: 15px; line-height: 1; }
+  .empty { grid-column: 1/-1; padding: 28px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 11px; line-height: 1.5; text-align: center; }
+
+  .workspace { overflow: auto; display: flex; align-items: center; justify-content: center; padding: 40px; background: radial-gradient(circle at 50% 40%, #faf9f6 0, #ece9e3 70%); }
+  #stage { position: relative; flex: 0 0 auto; width: 500px; height: 750px; overflow: hidden; background: #dce7ec; box-shadow: 0 18px 55px rgba(52,45,36,.18); }
+  #stage.drop-ready { outline: 3px solid var(--accent); outline-offset: 7px; }
+  #stage::after { content: ''; position: absolute; inset: 12px; z-index: 900; border: 1px solid rgba(50,45,38,.09); pointer-events: none; }
+  .stage-heading { position: absolute; top: 38px; left: 30px; right: 30px; z-index: 800; color: #332f2b; text-align: center; pointer-events: none; }
+  #stageTitle1 { display: block; font: 38px/1.05 'Italiana', serif; letter-spacing: .12em; text-transform: uppercase; }
+  #stageTitle2 { display: block; margin-top: -2px; font: 45px/1 'Parisienne', cursive; color: var(--accent); }
+  .stage-brand { position: absolute; right: 25px; bottom: 22px; z-index: 800; color: rgba(45,42,37,.6); font-size: 9px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; pointer-events: none; }
+  .garment { position: absolute; cursor: grab; touch-action: none; border: 1px solid transparent; }
+  .garment.selected { border: 1px dashed var(--accent); }
+  .garment img { width: 100%; height: 100%; display: block; object-fit: contain; pointer-events: none; filter: drop-shadow(0 5px 8px rgba(42,37,31,.16)); }
+  .garment .remove { position: absolute; top: -11px; right: -11px; display: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: var(--ink); color: #fff; line-height: 22px; }
+  .garment .handle { position: absolute; right: -7px; bottom: -7px; display: none; width: 14px; height: 14px; border: 2px solid #fff; border-radius: 50%; background: var(--accent); cursor: nwse-resize; }
+  .garment.selected .remove, .garment.selected .handle { display: block; }
+
+  .controls h2 { margin: 0 0 16px; font-size: 16px; }
+  .backgrounds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .bg-choice { height: 62px; padding: 0; border: 2px solid #fff; border-radius: 8px; box-shadow: 0 0 0 1px var(--line); }
+  .bg-choice.active { box-shadow: 0 0 0 2px var(--accent); }
+  .bg-white { background: #ffffff; }
+  .bg-blush { background: #efdde0; }
+  .bg-cream { background: #f5efe6; }
+  .bg-sage { background: #dfe6dc; }
+  .bg-blue { background: #dce7ec; }
+  .bg-paper { background: linear-gradient(135deg,#f7f1e7,#eee1ce); }
+  .bg-gingham { background-color: #f7f2eb; background-image: linear-gradient(90deg,rgba(156,76,95,.13) 50%,transparent 50%),linear-gradient(rgba(156,76,95,.13) 50%,transparent 50%); background-size: 18px 18px; }
+  .divider { margin: 20px 0; border: 0; border-top: 1px solid var(--line); }
+  .selection-empty { padding: 14px; border-radius: 8px; background: var(--paper); color: var(--muted); font-size: 11px; line-height: 1.5; }
+  #selectionControls { display: none; }
+  .button { width: 100%; margin-top: 9px; padding: 10px 12px; border: 0; border-radius: 7px; font-size: 12px; font-weight: 700; }
+  .button.primary { background: var(--ink); color: #fff; }
+  .button.secondary { border: 1px solid var(--line); background: #fff; color: var(--ink); }
+  .button.danger { background: #faecec; color: #a52e35; }
+  .save-status { min-height: 34px; margin: 10px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+  .range-label { display: flex; justify-content: space-between; }
+  @media (max-width: 1023px) { body { overflow-x: auto; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel wardrobe">
+    <div class="panel-inner">
+      <a class="back" href="/">← Pin Studio</a>
+      <h1>Outfit Studio</h1>
+      <p class="lede">Upload wardrobe pieces, then click a cutout to add it to the look.</p>
+
+      <div class="upload-box">
+        <div class="section-row">
+          <div>
+            <label for="category">Add to section</label>
+            <select id="category"></select>
+          </div>
+          <button class="add-section" id="addSection" type="button">+ Section</button>
+        </div>
+        <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-controls="garmentFiles">
+          <span class="drop-icon">↑</span>
+          <strong>Drop garment photos here</strong>
+          <span>from your laptop, GPT or any website · multiple images welcome</span>
+        </div>
+        <input id="garmentFiles" type="file" accept="image/*" multiple>
+        <p class="upload-status" id="uploadStatus"></p>
+      </div>
+
+      <div class="tabs" id="tabs"></div>
+      <div class="items" id="items"></div>
+    </div>
+  </aside>
+
+  <div class="column-resizer" id="leftResizer" role="separator" tabindex="0" aria-label="Resize wardrobe column" aria-orientation="vertical" title="Drag to resize · double-click to reset"></div>
+
+  <main class="workspace">
+    <div id="stage">
+      <div class="stage-heading"><span id="stageTitle1">AUTUMN</span><span id="stageTitle2">Outfit</span></div>
+      <span class="stage-brand">Home Studio Edit</span>
+    </div>
+  </main>
+
+  <div class="column-resizer" id="rightResizer" role="separator" tabindex="0" aria-label="Resize controls column" aria-orientation="vertical" title="Drag to resize · double-click to reset"></div>
+
+  <aside class="panel controls">
+    <div class="panel-inner">
+      <p class="eyebrow">Canvas</p>
+      <h2>Style the look</h2>
+      <label>Background</label>
+      <div class="backgrounds" id="backgrounds">
+        <button class="bg-choice bg-blue active" data-bg="blue" title="Powder blue"></button>
+        <button class="bg-choice bg-white" data-bg="white" title="White"></button>
+        <button class="bg-choice bg-blush" data-bg="blush" title="Blush"></button>
+        <button class="bg-choice bg-cream" data-bg="cream" title="Cream"></button>
+        <button class="bg-choice bg-sage" data-bg="sage" title="Sage"></button>
+        <button class="bg-choice bg-paper" data-bg="warm-paper" title="Warm paper"></button>
+        <button class="bg-choice bg-gingham" data-bg="gingham" title="Gingham"></button>
+      </div>
+
+      <label for="title1">Title line 1</label>
+      <input id="title1" type="text">
+      <label for="title2">Title line 2</label>
+      <input id="title2" type="text">
+
+      <hr class="divider">
+      <p class="eyebrow">Selected piece</p>
+      <div class="selection-empty" id="selectionEmpty">Click a piece on the canvas to resize, rotate, link, layer or remove it.</div>
+      <div id="selectionControls">
+        <label class="range-label" for="size"><span>Size</span><span id="sizeValue"></span></label>
+        <input id="size" type="range" min="40" max="380" step="1">
+        <label class="range-label" for="rotation"><span>Rotation</span><span id="rotationValue"></span></label>
+        <input id="rotation" type="range" min="-30" max="30" step="1" value="0">
+        <label for="itemUrl">Product link (optional)</label>
+        <input id="itemUrl" type="text" placeholder="https://www.amazon.co.uk/dp/…">
+        <button class="button secondary" id="bringFront">Bring to front</button>
+        <button class="button danger" id="removeItem">Remove from outfit</button>
+      </div>
+
+      <hr class="divider">
+      <button class="button secondary" id="tidy">Arrange outfit</button>
+      <button class="button primary" id="save">Save outfit pin</button>
+      <p class="save-status" id="saveStatus"></p>
+    </div>
+  </aside>
+</div>
+
+<script>
+const slug = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
+const stage = document.getElementById('stage');
+const studioApp = document.querySelector('.app');
+const DEFAULT_SECTIONS = [
+  { id: 'tops', label: 'Tops' }, { id: 'jackets', label: 'Jackets' },
+  { id: 'jeans', label: 'Jeans' }, { id: 'shoes', label: 'Shoes' },
+  { id: 'accessories', label: 'Accessories' },
+];
+const BACKGROUNDS = {
+  white: '#ffffff', blush: '#efdde0', cream: '#f5efe6', sage: '#dfe6dc', blue: '#dce7ec',
+  'warm-paper': 'linear-gradient(135deg,#f7f1e7,#eee1ce)',
+  gingham: '#f7f2eb',
+};
+let pin = null;
+let products = [];
+let sections = DEFAULT_SECTIONS.map(section => ({ ...section }));
+let filter = 'tops';
+let layers = [];
+let selected = null;
+let nextZ = 10;
+let backgroundChoice = 'blue';
+
+const $ = id => document.getElementById(id);
+const escapeHtml = value => String(value || '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+
+const PANEL_SIZES = {
+  left: { variable: '--left-panel-width', other: '--right-panel-width', initial: 330, min: 230, max: 520 },
+  right: { variable: '--right-panel-width', other: '--left-panel-width', initial: 280, min: 240, max: 480 },
+};
+
+function panelWidth(variable) {
+  return parseFloat(getComputedStyle(studioApp).getPropertyValue(variable));
+}
+
+function setPanelWidth(side, requested, remember = true) {
+  const settings = PANEL_SIZES[side];
+  const roomForCanvas = window.innerWidth - panelWidth(settings.other) - 570;
+  const dynamicMax = Math.max(settings.min, Math.min(settings.max, roomForCanvas));
+  const width = Math.round(Math.max(settings.min, Math.min(dynamicMax, requested)));
+  studioApp.style.setProperty(settings.variable, `${width}px`);
+  if (remember) localStorage.setItem(`outfitStudio.${side}PanelWidth`, String(width));
+  return width;
+}
+
+function makePanelResizable(handle, side) {
+  const settings = PANEL_SIZES[side];
+  let drag = null;
+  handle.addEventListener('pointerdown', event => {
+    drag = { x: event.clientX, width: panelWidth(settings.variable) };
+    handle.setPointerCapture(event.pointerId);
+    handle.classList.add('dragging');
+    document.body.classList.add('resizing-columns');
+  });
+  handle.addEventListener('pointermove', event => {
+    if (!drag) return;
+    const direction = side === 'left' ? 1 : -1;
+    setPanelWidth(side, drag.width + (event.clientX - drag.x) * direction);
+  });
+  const finish = () => {
+    drag = null;
+    handle.classList.remove('dragging');
+    document.body.classList.remove('resizing-columns');
+  };
+  handle.addEventListener('pointerup', finish);
+  handle.addEventListener('pointercancel', finish);
+  handle.addEventListener('dblclick', () => setPanelWidth(side, settings.initial));
+  handle.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    const arrow = event.key === 'ArrowRight' ? 1 : -1;
+    const direction = side === 'left' ? arrow : -arrow;
+    setPanelWidth(side, panelWidth(settings.variable) + direction * 10);
+  });
+}
+
+Object.keys(PANEL_SIZES).forEach(side => {
+  const saved = Number(localStorage.getItem(`outfitStudio.${side}PanelWidth`));
+  if (Number.isFinite(saved) && saved > 0) setPanelWidth(side, saved, false);
+});
+makePanelResizable($('leftResizer'), 'left');
+makePanelResizable($('rightResizer'), 'right');
+window.addEventListener('resize', () => {
+  setPanelWidth('left', panelWidth('--left-panel-width'), false);
+  setPanelWidth('right', panelWidth('--right-panel-width'), false);
+});
+
+function productIndexFromId(id) { return products.findIndex(product => product.id === id); }
+function selectedProductIds() { return new Set(layers.map(layer => layer.productId)); }
+
+function sectionOptions(selectedId) {
+  return sections.map(section =>
+    `<option value="${escapeHtml(section.id)}" ${section.id === selectedId ? 'selected' : ''}>${escapeHtml(section.label)}</option>`
+  ).join('');
+}
+
+function renderCategoryOptions() {
+  const current = $('category').value;
+  $('category').innerHTML = sectionOptions(sections.some(section => section.id === current) ? current : filter);
+}
+
+function renderTabs() {
+  $('tabs').innerHTML = sections.map(section => {
+    const count = products.filter(product => product.category === section.id).length;
+    return `<button class="tab ${filter === section.id ? 'active' : ''}" data-category="${escapeHtml(section.id)}">${escapeHtml(section.label)}${count ? ` ${count}` : ''}</button>`;
+  }).join('');
+}
+
+function renderItems() {
+  renderTabs();
+  const shown = products.filter(product => product.category === filter);
+  const picked = selectedProductIds();
+  $('items').innerHTML = shown.length ? shown.map(product => `
+    <div class="item ${picked.has(product.id) ? 'active' : ''}" data-id="${product.id}" draggable="true">
+      <button class="item-toggle" type="button">
+        <span class="item-image"><img src="${product.cutoutUrl}" alt=""></span>
+        <span class="item-name">${escapeHtml(product.title)}</span><span class="item-mark">✓</span>
+      </button>
+      <div class="item-actions">
+        <select class="item-section" aria-label="Move ${escapeHtml(product.title)} to section">${sectionOptions(product.category)}</select>
+        <button class="item-delete" type="button" title="Delete ${escapeHtml(product.title)}" aria-label="Delete ${escapeHtml(product.title)}">×</button>
+      </div>
+    </div>`).join('') : `<div class="empty">No ${(sections.find(section => section.id === filter)?.label || 'items').toLowerCase()} yet.<br>Choose images above and their backgrounds will be removed automatically.</div>`;
+}
+
+$('tabs').addEventListener('click', event => {
+  const tab = event.target.closest('.tab');
+  if (!tab) return;
+  filter = tab.dataset.category;
+  renderItems();
+});
+
+$('items').addEventListener('click', event => {
+  const card = event.target.closest('.item');
+  if (!card || !event.target.closest('.item-toggle')) return;
+  const existing = layers.find(layer => layer.productId === card.dataset.id);
+  if (existing) removeLayer(existing);
+  else addProduct(products.find(product => product.id === card.dataset.id));
+});
+
+$('items').addEventListener('change', async event => {
+  const selector = event.target.closest('.item-section');
+  if (!selector) return;
+  const card = selector.closest('.item');
+  const product = products.find(item => item.id === card.dataset.id);
+  const previousCategory = product.category;
+  selector.disabled = true;
+  try {
+    const response = await fetch(`/api/outfit-pins/${slug}/assets/${product.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: selector.value }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Move failed');
+    product.category = body.category;
+    const layer = layers.find(item => item.productId === product.id);
+    if (layer) layer.category = body.category;
+    renderItems();
+  } catch (error) {
+    selector.value = previousCategory;
+    selector.disabled = false;
+    $('uploadStatus').textContent = `Could not move item: ${error.message}`;
+  }
+});
+
+$('items').addEventListener('click', async event => {
+  const deleteButton = event.target.closest('.item-delete');
+  if (!deleteButton) return;
+  const card = deleteButton.closest('.item');
+  const product = products.find(item => item.id === card.dataset.id);
+  if (!confirm(`Delete ${product.title} from this wardrobe?`)) return;
+  deleteButton.disabled = true;
+  try {
+    const response = await fetch(`/api/outfit-pins/${slug}/assets/${product.id}`, { method: 'DELETE' });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Delete failed');
+    const layer = layers.find(item => item.productId === product.id);
+    if (layer) {
+      layer.el.remove();
+      layers = layers.filter(item => item !== layer);
+      if (selected === layer) deselect();
+    }
+    products = products.filter(item => item.id !== product.id);
+    renderItems();
+    $('uploadStatus').textContent = `${product.title} deleted.`;
+  } catch (error) {
+    deleteButton.disabled = false;
+    $('uploadStatus').textContent = `Could not delete item: ${error.message}`;
+  }
+});
+
+$('addSection').addEventListener('click', async () => {
+  const label = prompt('Name the new wardrobe section:');
+  if (!label?.trim()) return;
+  $('addSection').disabled = true;
+  try {
+    const response = await fetch(`/api/outfit-pins/${slug}/sections`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: label.trim() }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Could not add section');
+    sections.push(body);
+    filter = body.id;
+    renderCategoryOptions();
+    $('category').value = body.id;
+    renderItems();
+    $('uploadStatus').textContent = `${body.label} section added.`;
+  } catch (error) {
+    $('uploadStatus').textContent = `Could not add section: ${error.message}`;
+  } finally { $('addSection').disabled = false; }
+});
+
+$('items').addEventListener('dragstart', event => {
+  const card = event.target.closest('.item');
+  if (!card) return;
+  if (event.target.closest('.item-section, .item-delete')) {
+    event.preventDefault();
+    return;
+  }
+  card.classList.add('dragging');
+  event.dataTransfer.effectAllowed = 'copyMove';
+  event.dataTransfer.setData('application/x-outfit-product', card.dataset.id);
+  event.dataTransfer.setData('text/plain', card.dataset.id);
+});
+
+$('items').addEventListener('dragend', event => {
+  event.target.closest('.item')?.classList.remove('dragging');
+  stage.classList.remove('drop-ready');
+});
+
+stage.addEventListener('dragover', event => {
+  const types = [...event.dataTransfer.types];
+  if (!types.includes('application/x-outfit-product')) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'copy';
+  stage.classList.add('drop-ready');
+});
+
+stage.addEventListener('dragleave', event => {
+  if (!event.relatedTarget || !stage.contains(event.relatedTarget)) stage.classList.remove('drop-ready');
+});
+
+stage.addEventListener('drop', event => {
+  const productId = event.dataTransfer.getData('application/x-outfit-product');
+  if (!productId) return;
+  event.preventDefault();
+  stage.classList.remove('drop-ready');
+  const product = products.find(item => item.id === productId);
+  if (!product) return;
+  const stageBox = stage.getBoundingClientRect();
+  const existing = layers.find(layer => layer.productId === productId);
+  if (existing) {
+    existing.x = event.clientX - stageBox.left - existing.w / 2;
+    existing.y = event.clientY - stageBox.top - existing.h / 2;
+    updateLayer(existing);
+    selectLayer(existing);
+  } else {
+    const rect = defaultRect(product.category);
+    rect.x = event.clientX - stageBox.left - rect.w / 2;
+    rect.y = event.clientY - stageBox.top - rect.h / 2;
+    addProduct(product, rect);
+  }
+});
+
+let uploadInProgress = false;
+
+function droppedImageSources(dataTransfer) {
+  const imageCandidates = [];
+  const fallbackCandidates = [];
+  const html = dataTransfer.getData('text/html');
+  if (html) {
+    const documentFragment = new DOMParser().parseFromString(html, 'text/html');
+    documentFragment.querySelectorAll('img').forEach(image => {
+      if (image.src) imageCandidates.push(image.src);
+      const srcset = image.getAttribute('srcset');
+      if (srcset) imageCandidates.push(...srcset.split(',').map(entry => entry.trim().split(/\s+/)[0]));
+    });
+    documentFragment.querySelectorAll('source[srcset]').forEach(source => {
+      imageCandidates.push(...source.getAttribute('srcset').split(',').map(entry => entry.trim().split(/\s+/)[0]));
+    });
+  }
+  const downloadUrl = dataTransfer.getData('DownloadURL');
+  const downloadMatch = downloadUrl.match(/^[^:]+:[^:]*:(https?:.*)$/i);
+  if (downloadMatch) imageCandidates.push(downloadMatch[1]);
+  const uriList = dataTransfer.getData('text/uri-list');
+  if (uriList) fallbackCandidates.push(...uriList.split('\n').map(value => value.trim()).filter(value => value && !value.startsWith('#')));
+  const plain = dataTransfer.getData('text/plain').trim();
+  if (/^(https:|blob:|data:image\/)/i.test(plain)) fallbackCandidates.push(plain);
+
+  const browserUrls = [...new Set([...imageCandidates, ...fallbackCandidates].filter(value => /^(blob:|data:image\/)/i.test(value)))];
+  let remoteUrls = [...new Set(imageCandidates.filter(value => {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:';
+    } catch (error) {
+      return false;
+    }
+  }))];
+  if (!remoteUrls.length) {
+    remoteUrls = [...new Set(fallbackCandidates.filter(value => {
+      try { return new URL(value).protocol === 'https:'; }
+      catch (error) { return false; }
+    }))];
+  }
+  const quality = value => {
+    if (value.includes('/originals/')) return 100000;
+    const size = value.match(/\/(\d+)x(?:\d+)?\//);
+    return size ? Number(size[1]) : 0;
+  };
+  remoteUrls.sort((left, right) => quality(right) - quality(left));
+  return { browserUrls: browserUrls.slice(0, 1), remoteUrls: remoteUrls.slice(0, 1) };
+}
+
+async function materializeBrowserImages(urls) {
+  const files = [];
+  for (const [index, url] of urls.entries()) {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) continue;
+      const extension = blob.type.split('/')[1].replace('jpeg', 'jpg').split('+')[0] || 'png';
+      files.push(new File([blob], `dropped-image-${index + 1}.${extension}`, { type: blob.type }));
+    } catch (error) {
+      // Cross-origin blob URLs sometimes cannot leave their source tab. A
+      // public/signed HTTPS candidate from the same drag is preferred above.
+    }
+  }
+  return files;
+}
+
+async function handleDroppedImages(dataTransfer) {
+  const itemFiles = [...(dataTransfer.items || [])]
+    .filter(item => item.kind === 'file')
+    .map(item => item.getAsFile())
+    .filter(Boolean);
+  const directFiles = [...dataTransfer.files];
+  const sources = droppedImageSources(dataTransfer);
+  const browserFiles = directFiles.length || itemFiles.length
+    ? []
+    : await materializeBrowserImages(sources.browserUrls);
+  const files = [...directFiles, ...itemFiles, ...browserFiles].filter((file, index, all) =>
+    all.findIndex(other => other.name === file.name && other.size === file.size) === index
+  );
+  uploadGarments(files, files.length ? [] : sources.remoteUrls);
+}
+
+async function uploadGarments(incomingFiles = [], remoteUrls = []) {
+  if (uploadInProgress) return;
+  const files = [...incomingFiles].filter(file =>
+    file.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|gif)$/i.test(file.name)
+  );
+  if (!files.length && !remoteUrls.length) {
+    $('uploadStatus').textContent = 'No downloadable image was found. Drag the picture itself rather than its surrounding page.';
+    return;
+  }
+  uploadInProgress = true;
+  $('dropZone').classList.add('busy');
+  const data = new FormData();
+  data.append('category', $('category').value);
+  files.forEach(file => data.append('files', file));
+  remoteUrls.forEach(url => data.append('image_urls', url));
+  const total = files.length + remoteUrls.length;
+  $('uploadStatus').textContent = `${remoteUrls.length ? 'Downloading and r' : 'R'}emoving background${total > 1 ? 's' : ''}… this can take a moment.`;
+  try {
+    const response = await fetch(`/api/outfit-pins/${slug}/assets`, { method: 'POST', body: data });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Upload failed');
+    await refreshPin();
+    filter = $('category').value;
+    renderItems();
+    $('uploadStatus').textContent = `${body.products.length} transparent cutout${body.products.length === 1 ? '' : 's'} added.`
+      + (body.errors?.length ? ` ${body.errors.length} image${body.errors.length === 1 ? '' : 's'} could not be processed.` : '');
+  } catch (error) {
+    $('uploadStatus').textContent = `Could not add image: ${error.message}`;
+  } finally {
+    uploadInProgress = false;
+    $('dropZone').classList.remove('busy', 'drag-over');
+  }
+}
+
+$('garmentFiles').addEventListener('change', event => {
+  const files = [...event.target.files];
+  event.target.value = '';
+  uploadGarments(files);
+});
+
+$('dropZone').addEventListener('click', () => $('garmentFiles').click());
+$('dropZone').addEventListener('keydown', event => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    $('garmentFiles').click();
+  }
+});
+
+['dragenter', 'dragover'].forEach(eventName => {
+  $('dropZone').addEventListener(eventName, event => {
+    event.preventDefault();
+    if (!uploadInProgress) $('dropZone').classList.add('drag-over');
+  });
+});
+
+$('dropZone').addEventListener('dragleave', event => {
+  if (!event.relatedTarget || !$('dropZone').contains(event.relatedTarget)) {
+    $('dropZone').classList.remove('drag-over');
+  }
+});
+$('dropZone').addEventListener('dragend', () => $('dropZone').classList.remove('drag-over'));
+
+$('dropZone').addEventListener('drop', event => {
+  event.preventDefault();
+  $('dropZone').classList.remove('drag-over');
+  handleDroppedImages(event.dataTransfer);
+});
+
+// Without this guard, missing the drop zone by a few pixels makes the browser
+// navigate away to the local image instead of leaving the editor open.
+window.addEventListener('dragover', event => {
+  const types = [...event.dataTransfer.types];
+  if (types.includes('Files') || types.includes('text/uri-list') || types.includes('text/html') || types.includes('text/plain')) event.preventDefault();
+});
+window.addEventListener('drop', event => {
+  const types = [...event.dataTransfer.types];
+  const externalImage = types.includes('Files') || types.includes('text/uri-list') || types.includes('text/html') || types.includes('text/plain');
+  if (externalImage && !types.includes('application/x-outfit-product') && !event.target.closest('#dropZone')) {
+    event.preventDefault();
+    $('uploadStatus').textContent = 'Drop laptop, GPT or website images inside the upload box on the left.';
+  }
+});
+
+// Mirrors pins._arrange_wardrobe_layout — keep the two in step. The garments
+// own the left column at ~55% of the frame; accessories run down the right in
+// a fixed order, headphones highest and shoes last, fragrance and watch paired.
+const LAYOUT_TOP_MARGIN = 70, LAYOUT_BOTTOM_MARGIN = 720;
+const LEFT_ZONE_X = 18, LEFT_ZONE_W = 275;
+const LEFT_TOP_SLOT = { x: LEFT_ZONE_X, y: 70, w: LEFT_ZONE_W, h: 245 };
+const LEFT_BOTTOM_SLOT = { x: 30, y: 325, w: 250, h: 390 };
+const RIGHT_ZONE_X = 308, RIGHT_ZONE_W = 177, RIGHT_ROW_GAP = 12, PAIR_GAP = 12;
+const TOP_CATEGORIES = ['tops', 'jumpers', 'jackets'];
+const BOTTOM_CATEGORIES = ['jeans'];
+const RIGHT_COLUMN = [
+  [['headphones'], 1.15],
+  [['glasses'], 0.8],
+  [['belts'], 0.9],
+  [['fragrance', 'watches'], 1.3],
+  [['shoes'], 1.55],
+];
+const SLOT_ALIASES = {
+  top: 'tops', tshirts: 'tops', tees: 'tops', shirts: 'tops',
+  jumper: 'jumpers', knitwear: 'jumpers', jacket: 'jackets',
+  jean: 'jeans', denim: 'jeans', trousers: 'jeans', bottoms: 'jeans', pants: 'jeans',
+  shoe: 'shoes', trainers: 'shoes', sneakers: 'shoes', boots: 'shoes',
+  belt: 'belts', watch: 'watches',
+  perfume: 'fragrance', fragrances: 'fragrance', aftershave: 'fragrance', scent: 'fragrance',
+  glass: 'glasses', sunglasses: 'glasses', eyewear: 'glasses', specs: 'glasses',
+  headphone: 'headphones', earphones: 'headphones', earbuds: 'headphones', airpods: 'headphones',
+};
+
+function slotKey(category) {
+  const key = String(category || '').trim().toLowerCase().replace(/-\d+$/, '');
+  return SLOT_ALIASES[key] || key;
+}
+
+function computeArrangement(categories) {
+  const keys = categories.map(slotKey);
+  const byKey = {};
+  keys.forEach((key, index) => (byKey[key] = byKey[key] || []).push(index));
+
+  const rects = {};
+  const place = (indexes, slot) => indexes.forEach((index, position) => {
+    rects[index] = {
+      x: slot.x + position * 14, y: slot.y + position * 10, w: slot.w, h: slot.h,
+    };
+  });
+
+  Object.entries(byKey).forEach(([key, indexes]) => {
+    if (TOP_CATEGORIES.includes(key)) place(indexes, LEFT_TOP_SLOT);
+    else if (BOTTOM_CATEGORIES.includes(key)) place(indexes, LEFT_BOTTOM_SLOT);
+  });
+
+  const rows = [];
+  RIGHT_COLUMN.forEach(([members, weight]) => {
+    const present = members.filter(member => byKey[member]);
+    if (present.length) rows.push([present, weight]);
+  });
+  const claimed = new Set(rows.flatMap(([members]) => members));
+  Object.keys(byKey)
+    .filter(key => !TOP_CATEGORIES.includes(key) && !BOTTOM_CATEGORIES.includes(key) && !claimed.has(key))
+    .sort()
+    .forEach(key => rows.splice(Math.max(0, rows.length - 1), 0, [[key], 1.0]));
+
+  if (rows.length) {
+    const available = (LAYOUT_BOTTOM_MARGIN - LAYOUT_TOP_MARGIN) - RIGHT_ROW_GAP * (rows.length - 1);
+    const totalWeight = rows.reduce((sum, [, weight]) => sum + weight, 0);
+    let cursor = LAYOUT_TOP_MARGIN;
+    rows.forEach(([members, weight]) => {
+      const height = available * weight / totalWeight;
+      const width = (RIGHT_ZONE_W - PAIR_GAP * (members.length - 1)) / members.length;
+      members.forEach((key, position) => {
+        place(byKey[key], {
+          x: RIGHT_ZONE_X + position * (width + PAIR_GAP), y: cursor, w: width, h: height,
+        });
+      });
+      cursor += height + RIGHT_ROW_GAP;
+    });
+  }
+
+  return categories.map((_, index) => rects[index] || { x: RIGHT_ZONE_X, y: LAYOUT_TOP_MARGIN, w: 120, h: 120 });
+}
+
+function defaultRect(category) {
+  const categories = [...layers.map(layer => layer.category), category];
+  return computeArrangement(categories)[categories.length - 1];
+}
+
+function addProduct(product, saved = null) {
+  if (!product) return;
+  const rect = saved || defaultRect(product.category);
+  const el = document.createElement('div');
+  el.className = 'garment';
+  const img = document.createElement('img');
+  img.src = product.cutoutUrl;
+  img.alt = '';
+  el.appendChild(img);
+  const remove = document.createElement('button');
+  remove.className = 'remove'; remove.type = 'button'; remove.textContent = '×';
+  const handle = document.createElement('span'); handle.className = 'handle';
+  el.append(remove, handle);
+  stage.appendChild(el);
+
+  const layer = {
+    el, img, productId: product.id, category: product.category,
+    x: Number(rect.x ?? rect.left), y: Number(rect.y ?? rect.top),
+    w: Number(rect.w ?? rect.width), h: Number(rect.h ?? rect.height),
+    rotation: Number(rect.rotation || 0), zIndex: Number(rect.zIndex || nextZ++),
+    url: rect.url || product.url || '', regionalUrls: rect.regionalUrls || product.regionalUrls || null,
+  };
+  nextZ = Math.max(nextZ, layer.zIndex + 1);
+  layers.push(layer);
+  updateLayer(layer);
+  // Only once the cutout's own dimensions are known can the box be tightened
+  // around it; it repaints in exactly the same place either way.
+  if (img.complete) fitLayerToImage(layer);
+  else img.addEventListener('load', () => fitLayerToImage(layer), { once: true });
+  makeInteractive(layer, handle);
+  remove.addEventListener('click', event => { event.stopPropagation(); removeLayer(layer); });
+  el.addEventListener('pointerdown', () => selectLayer(layer));
+  selectLayer(layer);
+  renderItems();
+}
+
+function updateLayer(layer) {
+  Object.assign(layer.el.style, {
+    left: `${layer.x}px`, top: `${layer.y}px`, width: `${layer.w}px`, height: `${layer.h}px`,
+    transform: `rotate(${layer.rotation}deg)`, zIndex: layer.zIndex,
+  });
+}
+
+function makeInteractive(layer, handle) {
+  let drag = null;
+  layer.el.addEventListener('pointerdown', event => {
+    if (event.target === handle || event.target.classList.contains('remove')) return;
+    drag = { clientX: event.clientX, clientY: event.clientY, x: layer.x, y: layer.y };
+    layer.el.setPointerCapture(event.pointerId);
+    layer.el.style.cursor = 'grabbing';
+  });
+  // event.buttons is 0 whenever nothing is held down. Without that guard a
+  // gesture the browser cancels (pointercancel, or a release the page never
+  // sees) leaves drag/resize set, and the next plain *hover* applies a delta
+  // measured from the old pointer position — the piece jumps.
+  layer.el.addEventListener('pointermove', event => {
+    if (!drag || !event.buttons) return;
+    layer.x = Math.max(-layer.w * .5, Math.min(500 - layer.w * .5, drag.x + event.clientX - drag.clientX));
+    layer.y = Math.max(110 - layer.h * .5, Math.min(750 - layer.h * .5, drag.y + event.clientY - drag.clientY));
+    updateLayer(layer);
+  });
+  const endDrag = () => { drag = null; layer.el.style.cursor = 'grab'; };
+  layer.el.addEventListener('pointerup', endDrag);
+  layer.el.addEventListener('pointercancel', endDrag);
+
+  let resize = null;
+  handle.addEventListener('pointerdown', event => {
+    event.stopPropagation();
+    resize = { clientX: event.clientX, clientY: event.clientY, w: layer.w, h: layer.h };
+    handle.setPointerCapture(event.pointerId);
+  });
+  handle.addEventListener('pointermove', event => {
+    if (!resize || !event.buttons) return;
+    // Follow whichever axis the pointer moved furthest along, so dragging the
+    // corner down resizes as readily as dragging it out.
+    const ratio = resize.h / resize.w;
+    const byWidth = resize.w + event.clientX - resize.clientX;
+    const byHeight = (resize.h + event.clientY - resize.clientY) / ratio;
+    const width = Math.abs(byWidth - resize.w) > Math.abs(byHeight - resize.w) ? byWidth : byHeight;
+    layer.w = Math.max(40, width);
+    layer.h = layer.w * ratio;
+    updateLayer(layer);
+    syncSelectionControls();
+  });
+  const endResize = () => { resize = null; };
+  handle.addEventListener('pointerup', endResize);
+  handle.addEventListener('pointercancel', endResize);
+}
+
+// Shrinks a layer's box to hug the cutout inside it.
+function fitLayerToImage(layer) {
+  const { naturalWidth, naturalHeight } = layer.img;
+  if (!naturalWidth || !naturalHeight) return;
+  // The image is drawn with object-fit: contain, so a tall bottle in a square
+  // box paints small with dead space either side — and the resize handle sits
+  // out in that dead space, nowhere near the picture. Matching the box to the
+  // image's own proportions leaves it rendered exactly where it already is,
+  // and puts the handle back on its corner.
+  const scale = Math.min(layer.w / naturalWidth, layer.h / naturalHeight);
+  const width = naturalWidth * scale;
+  const height = naturalHeight * scale;
+  layer.x += (layer.w - width) / 2;
+  layer.y += (layer.h - height) / 2;
+  layer.w = width;
+  layer.h = height;
+  updateLayer(layer);
+  if (selected === layer) syncSelectionControls();
+}
+
+function selectLayer(layer) {
+  layers.forEach(item => item.el.classList.toggle('selected', item === layer));
+  selected = layer;
+  $('selectionEmpty').style.display = 'none';
+  $('selectionControls').style.display = 'block';
+  syncSelectionControls();
+}
+
+function deselect() {
+  layers.forEach(item => item.el.classList.remove('selected'));
+  selected = null;
+  $('selectionEmpty').style.display = 'block';
+  $('selectionControls').style.display = 'none';
+}
+
+function syncSelectionControls() {
+  if (!selected) return;
+  $('size').value = Math.round(selected.w);
+  $('sizeValue').textContent = `${Math.round(selected.w)}px`;
+  $('rotation').value = selected.rotation;
+  $('rotationValue').textContent = `${selected.rotation}°`;
+  $('itemUrl').value = selected.url || '';
+}
+
+function removeLayer(layer) {
+  layer.el.remove();
+  layers = layers.filter(item => item !== layer);
+  if (selected === layer) deselect();
+  renderItems();
+}
+
+stage.addEventListener('pointerdown', event => { if (event.target === stage) deselect(); });
+$('size').addEventListener('input', event => {
+  if (!selected) return;
+  const ratio = selected.h / selected.w;
+  selected.w = Number(event.target.value); selected.h = selected.w * ratio;
+  updateLayer(selected); syncSelectionControls();
+});
+$('rotation').addEventListener('input', event => {
+  if (!selected) return;
+  selected.rotation = Number(event.target.value); updateLayer(selected); syncSelectionControls();
+});
+$('itemUrl').addEventListener('input', event => { if (selected) selected.url = event.target.value.trim(); });
+$('bringFront').addEventListener('click', () => { if (selected) { selected.zIndex = nextZ++; updateLayer(selected); } });
+$('removeItem').addEventListener('click', () => { if (selected) removeLayer(selected); });
+
+function setBackground(choice) {
+  backgroundChoice = choice;
+  stage.style.background = BACKGROUNDS[choice] || BACKGROUNDS['blue'];
+  if (choice === 'gingham') {
+    stage.style.backgroundImage = 'linear-gradient(90deg,rgba(156,76,95,.13) 50%,transparent 50%),linear-gradient(rgba(156,76,95,.13) 50%,transparent 50%)';
+    stage.style.backgroundSize = '36px 36px';
+  } else if (!String(BACKGROUNDS[choice]).startsWith('linear-gradient')) {
+    stage.style.backgroundImage = 'none';
+  }
+  document.querySelectorAll('.bg-choice').forEach(button => button.classList.toggle('active', button.dataset.bg === choice));
+}
+
+$('backgrounds').addEventListener('click', event => {
+  const button = event.target.closest('.bg-choice');
+  if (button) setBackground(button.dataset.bg);
+});
+
+function updateTitles() {
+  $('stageTitle1').textContent = $('title1').value;
+  $('stageTitle2').textContent = $('title2').value;
+}
+$('title1').addEventListener('input', updateTitles);
+$('title2').addEventListener('input', updateTitles);
+
+function arrangeOutfit() {
+  const rects = computeArrangement(layers.map(layer => layer.category));
+  layers.forEach((layer, index) => {
+    Object.assign(layer, rects[index], { rotation: 0 });
+    updateLayer(layer);
+  });
+  if (selected) syncSelectionControls();
+}
+$('tidy').addEventListener('click', arrangeOutfit);
+
+function drawBackground(ctx, width, height) {
+  const solids = { white: '#ffffff', blush: '#efdde0', cream: '#f5efe6', sage: '#dfe6dc', blue: '#dce7ec', gingham: '#f7f2eb' };
+  if (backgroundChoice === 'warm-paper') {
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, '#f7f1e7'); gradient.addColorStop(1, '#eee1ce');
+    ctx.fillStyle = gradient;
+  } else ctx.fillStyle = solids[backgroundChoice] || '#dce7ec';
+  ctx.fillRect(0, 0, width, height);
+  if (backgroundChoice === 'gingham') {
+    ctx.fillStyle = 'rgba(156,76,95,.11)';
+    for (let x = 0; x < width; x += 72) ctx.fillRect(x, 0, 36, height);
+    for (let y = 0; y < height; y += 72) ctx.fillRect(0, y, width, 36);
+  }
+}
+
+async function renderCanvas() {
+  await document.fonts.ready;
+  const scale = 2;
+  const canvas = document.createElement('canvas'); canvas.width = 500 * scale; canvas.height = 750 * scale;
+  const ctx = canvas.getContext('2d');
+  drawBackground(ctx, canvas.width, canvas.height);
+  for (const layer of [...layers].sort((a, b) => a.zIndex - b.zIndex)) {
+    if (!layer.img.complete) await new Promise(resolve => layer.img.addEventListener('load', resolve, { once: true }));
+    ctx.save();
+    ctx.translate((layer.x + layer.w / 2) * scale, (layer.y + layer.h / 2) * scale);
+    ctx.rotate(layer.rotation * Math.PI / 180);
+    ctx.shadowColor = 'rgba(42,37,31,.16)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 7;
+    const ratio = Math.min((layer.w * scale) / layer.img.naturalWidth, (layer.h * scale) / layer.img.naturalHeight);
+    const width = layer.img.naturalWidth * ratio, height = layer.img.naturalHeight * ratio;
+    ctx.drawImage(layer.img, -width / 2, -height / 2, width, height);
+    ctx.restore();
+  }
+  ctx.textAlign = 'center';
+  if ($('title1').value) {
+    ctx.fillStyle = '#332f2b'; ctx.font = `${38 * scale}px Italiana`;
+    ctx.fillText($('title1').value.toUpperCase(), 250 * scale, 72 * scale);
+  }
+  if ($('title2').value) {
+    ctx.fillStyle = '#9c4c5f'; ctx.font = `${45 * scale}px Parisienne`;
+    ctx.fillText($('title2').value, 250 * scale, 111 * scale);
+  }
+  ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(45,42,37,.6)'; ctx.font = `700 ${9 * scale}px DM Sans`;
+  ctx.fillText('HOME STUDIO EDIT', 475 * scale, 724 * scale);
+  ctx.strokeStyle = 'rgba(50,45,38,.09)'; ctx.lineWidth = 2; ctx.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
+  return canvas;
+}
+
+function currentLayout() {
+  return {
+    backgroundChoice,
+    title1: $('title1').value,
+    title2: $('title2').value,
+    layers: layers.map(layer => ({
+      productId: layer.productId, x: layer.x, y: layer.y, w: layer.w, h: layer.h,
+      rotation: layer.rotation, zIndex: layer.zIndex, url: layer.url, regionalUrls: layer.regionalUrls,
+    })),
+  };
+}
+
+function hotspots() {
+  return layers.filter(layer => layer.url).map(layer => ({
+    leftPct: layer.x / 5, topPct: layer.y / 7.5, widthPct: layer.w / 5, heightPct: layer.h / 7.5,
+    url: layer.url, regionalUrls: layer.regionalUrls,
+  }));
+}
+
+$('save').addEventListener('click', async () => {
+  if (!layers.length) return $('saveStatus').textContent = 'Add at least one garment to the outfit first.';
+  $('save').disabled = true; $('saveStatus').textContent = 'Rendering outfit…'; deselect();
+  try {
+    const canvas = await renderCanvas();
+    $('saveStatus').textContent = 'Saving…';
+    const response = await fetch(`/api/pins/${slug}/save`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: canvas.toDataURL('image/png'), layout: currentLayout(), hotspots: hotspots() }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Save failed');
+    $('saveStatus').textContent = 'Saved. This outfit is ready to publish or post from the dashboard.';
+  } catch (error) {
+    $('saveStatus').textContent = `Save failed: ${error.message}`;
+  } finally { $('save').disabled = false; }
+});
+
+async function refreshPin() {
+  const response = await fetch(`/api/pins/${slug}`);
+  if (!response.ok) throw new Error('Could not load this outfit.');
+  pin = await response.json();
+  products = pin.products || [];
+  sections = pin.outfit_sections?.length ? pin.outfit_sections : DEFAULT_SECTIONS.map(section => ({ ...section }));
+  if (!sections.some(section => section.id === filter)) filter = sections[0]?.id || 'tops';
+  renderCategoryOptions();
+}
+
+async function load() {
+  try {
+    await refreshPin();
+    document.title = `${pin.title1} ${pin.title2} — Outfit Studio`;
+    const layout = pin.layout || {};
+    $('title1').value = layout.title1 ?? pin.title1 ?? '';
+    $('title2').value = layout.title2 ?? pin.title2 ?? '';
+    updateTitles(); setBackground(layout.backgroundChoice || 'blue'); renderItems();
+    for (const saved of layout.layers || []) {
+      const product = products.find(item => item.id === saved.productId);
+      if (product) addProduct(product, saved);
+    }
+    deselect(); renderItems();
+  } catch (error) { $('uploadStatus').textContent = error.message; }
+}
+load();
+</script>
+</body>
+</html>

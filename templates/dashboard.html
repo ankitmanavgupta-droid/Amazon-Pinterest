@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pin Studio</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #f6f6f7;
+    --card: #ffffff;
+    --line: #e4e4e7;
+    --ink: #18181b;
+    --muted: #71717a;
+    --accent: #b91c4a;
+    --ok: #15803d;
+    --warn: #b45309;
+  }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+  header {
+    background: var(--card); border-bottom: 1px solid var(--line);
+    padding: 16px 24px; display: flex; align-items: baseline; gap: 16px;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  header a { color: var(--accent); font-size: 13px; margin-left: auto; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px; display: grid; gap: 24px; }
+
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+  .panel h2 { font-size: 15px; margin: 0 0 16px; }
+
+  label { display: block; font-size: 12px; font-weight: 600; margin: 12px 0 4px; }
+  input[type=text], input[type=datetime-local], textarea {
+    width: 100%; padding: 8px 10px; font-size: 13px; font-family: inherit;
+    border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink);
+  }
+  textarea { min-height: 110px; resize: vertical; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  button {
+    cursor: pointer; border: 1px solid transparent; border-radius: 6px;
+    padding: 8px 14px; font-size: 13px; font-weight: 600; font-family: inherit;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  .btn-primary { background: var(--ink); color: #fff; }
+  .btn-secondary { background: #fff; color: var(--ink); border-color: var(--line); }
+  .btn-danger { background: #fff; color: #b91c1c; border-color: #fecaca; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+  .log {
+    margin-top: 14px; padding: 12px; background: #fafafa; border: 1px solid var(--line);
+    border-radius: 6px; font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+    color: var(--muted); white-space: pre-wrap; max-height: 180px; overflow-y: auto;
+  }
+  .log:empty { display: none; }
+
+  .pin-list { display: grid; gap: 12px; }
+  .pin {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px; display: grid; grid-template-columns: 64px 1fr auto; gap: 16px; align-items: center;
+  }
+  .pin .thumb {
+    width: 64px; height: 96px; border-radius: 6px; object-fit: cover;
+    background: #f4f4f5; border: 1px solid var(--line);
+  }
+  .pin .thumb.empty { display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--muted); }
+  .pin h3 { margin: 0 0 2px; font-size: 14px; }
+  .pin .meta { font-size: 12px; color: var(--muted); }
+  .pin .seo { font-size: 12px; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .pin .links { font-size: 12px; margin-top: 4px; display: flex; gap: 12px; }
+  .pin a { color: var(--accent); }
+  .pin .actions { margin: 0; justify-content: flex-end; }
+  .pin .when { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .schedule-row { display: flex; gap: 6px; align-items: center; }
+  .schedule-row input[type=datetime-local] { width: auto; font-size: 12px; padding: 5px 8px; }
+
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; margin-left: 8px;
+  }
+  .badge.draft { background: #f4f4f5; color: var(--muted); }
+  .badge.rendered { background: #fef3c7; color: var(--warn); }
+  .badge.published { background: #dbeafe; color: #1d4ed8; }
+  .badge.scheduled { background: #ede9fe; color: #6d28d9; }
+  .badge.posted { background: #dcfce7; color: var(--ok); }
+  .badge.awaiting_image { background: #fef3c7; color: var(--warn); }
+
+  .finds { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+  .finds:empty { display: none; }
+  .find {
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px; cursor: pointer;
+    background: #fff; position: relative;
+  }
+  .find.picked { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+  .find img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #fafafa; border-radius: 4px; }
+  .find .score {
+    position: absolute; top: 12px; right: 12px; background: var(--ink); color: #fff;
+    font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+  }
+  .find .name { font-size: 12px; margin-top: 6px; line-height: 1.3; max-height: 32px; overflow: hidden; }
+  .find .why { font-size: 11px; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .find .stars { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  #pinTemplate, #dripInterval { width: 100%; padding: 8px 10px; font-size: 13px; font-family: inherit;
+    border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); }
+  #dripInterval { width: 90px; }
+  code { background: #f4f4f5; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+  .empty-state { color: var(--muted); font-size: 13px; text-align: center; padding: 32px; }
+  .error { color: #b91c1c; font-size: 13px; margin-top: 10px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pin Studio</h1>
+  <span class="sub">Build, publish and post Amazon affiliate pins</span>
+  <a href="/wardrobe">Wardrobe →</a>
+  <a id="shopLink" href="#" target="_blank">View live shop →</a>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Find products</h2>
+    <p class="hint" style="margin:-8px 0 12px;">Describe a look and Claude picks the search terms,
+      then scores what Amazon returns on how well each product photo would actually work on a pin.
+      Tick the ones you want and they drop into the pin below.</p>
+    <div class="row">
+      <div>
+        <label for="vibe">The look you're after</label>
+        <input type="text" id="vibe" placeholder="early autumn cottagecore tops">
+      </div>
+      <div>
+        <label for="terms">Amazon searches to run</label>
+        <select id="terms">
+          <option value="2">2 — quicker</option>
+          <option value="3" selected>3</option>
+          <option value="4">4 — widest net</option>
+        </select>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn-primary" id="discoverBtn">Find products</button>
+      <button class="btn-secondary" id="useSelectedBtn" style="display:none;">Use selected</button>
+    </div>
+    <div class="log" id="discoverLog"></div>
+    <div class="error" id="discoverError"></div>
+    <div class="finds" id="finds"></div>
+  </section>
+
+  <section class="panel">
+    <h2>New pin</h2>
+    <label for="pinTemplate">Template</label>
+    <select id="pinTemplate">
+      <option value="product" selected>Product collage — several products, one shop-the-look pin</option>
+      <option value="generated">Generated image — a ChatGPT-made image, posted as-is</option>
+      <option value="outfit">Build an outfit — upload garment cutouts and style a look</option>
+    </select>
+
+    <div id="productForm">
+      <div class="row">
+        <div>
+          <label for="title1">Title line 1</label>
+          <input type="text" id="title1" placeholder="Summer Tops">
+        </div>
+        <div>
+          <label for="title2">Title line 2 (script font)</label>
+          <input type="text" id="title2" placeholder="From Amazon">
+        </div>
+      </div>
+      <label for="urls">Amazon product links (one per line, up to 6)</label>
+      <textarea id="urls" placeholder="https://www.amazon.co.uk/dp/...&#10;https://www.amazon.com/dp/..."></textarea>
+      <p class="hint">Short links and sponsored search links both work — they get resolved automatically.
+        Leave a blank line between groups to build several pins in one go, all sharing this title —
+        each group becomes its own pin (up to 6 products each).</p>
+      <div class="actions">
+        <button class="btn-primary" id="buildBtn">Build pin</button>
+      </div>
+      <div class="log" id="buildLog"></div>
+      <div class="error" id="buildError"></div>
+    </div>
+
+    <div id="generatedForm" style="display:none;">
+      <label for="generatedTitle">Title (optional — defaults to each product's own title)</label>
+      <input type="text" id="generatedTitle" placeholder="Autumn cardigan">
+      <label for="generatedUrl">Amazon product link(s)</label>
+      <textarea id="generatedUrl" placeholder="https://www.amazon.co.uk/dp/..."></textarea>
+      <p class="hint">Saves each product's photo to <code>incoming-clothes/</code> as a reference image.
+        Generate a pin from it yourself, save the result as <code>generated-images/&lt;slug&gt;.png</code>
+        (the slug is shown below once saved), and it gets picked up and posted as-is — no editor step
+        for this template. Paste several links, one per line, to batch-create them all under one title.</p>
+      <div class="actions">
+        <button class="btn-primary" id="saveLinkBtn">Save reference photo</button>
+      </div>
+      <div class="log" id="generatedLog"></div>
+      <div class="error" id="generatedError"></div>
+      <div class="hint" id="generatedStatus"></div>
+    </div>
+
+    <div id="outfitForm" style="display:none;">
+      <div class="row">
+        <div>
+          <label for="outfitTitle1">Title line 1</label>
+          <input type="text" id="outfitTitle1" value="Autumn" placeholder="Autumn">
+        </div>
+        <div>
+          <label for="outfitTitle2">Title line 2</label>
+          <input type="text" id="outfitTitle2" value="Outfit" placeholder="Outfit">
+        </div>
+      </div>
+      <p class="hint">Creates a wardrobe workspace with sections for tops, jackets, jeans, shoes and accessories. Upload photos there and their backgrounds will be removed automatically.</p>
+      <div class="actions">
+        <button class="btn-primary" id="createOutfitBtn">Open outfit studio</button>
+      </div>
+      <div class="error" id="outfitError"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Auto-post queue</h2>
+    <p class="hint" style="margin:-8px 0 12px;">Instead of scheduling pins one at a time, post whatever's
+      ready at a fixed interval, oldest first. Zernio holds and fires each slot on its own servers, so
+      posts already assigned a slot go out even with this app closed — running it (or
+      <code>python sync_generated.py</code>) is only needed to pick up newly-ready pins.</p>
+    <div class="row">
+      <div>
+        <label for="dripInterval">Post every (hours)</label>
+        <input type="text" id="dripInterval" placeholder="3">
+      </div>
+      <div>
+        <label>Status</label>
+        <div class="hint" id="dripStatusText" style="margin-top:8px;">Off</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn-primary" id="dripEnableBtn">Start</button>
+      <button class="btn-danger" id="dripDisableBtn" style="display:none;">Stop</button>
+    </div>
+    <div class="error" id="dripError"></div>
+  </section>
+
+  <section>
+    <div class="actions" style="margin-bottom:12px; justify-content: space-between;">
+      <h2 style="font-size:15px; margin:0;">Pins</h2>
+      <button class="btn-secondary" id="publishAllBtn">Publish &amp; post everything ready</button>
+    </div>
+    <div class="pin-list" id="pinList"></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function api(path, options) {
+  const response = await fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+
+  // Flask's own error pages are HTML, so parsing blind turns a plain 404 into a
+  // cryptic JSON error. The usual cause is app.py still running older code than
+  // the page it just served — the templates reload from disk, the routes don't.
+  let body = null;
+  if (response.status !== 204) {
+    const text = await response.text();
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch (e) {
+      throw new Error(`Server returned ${response.status} and not JSON — restart python app.py, it may be running older code than this page.`);
+    }
+  }
+
+  if (!response.ok) throw new Error((body && body.error) || `Request failed (${response.status})`);
+  return body;
+}
+
+// ---------- Pin list ----------
+
+const STATUS_LABEL = { draft: 'Draft', rendered: 'Ready', published: 'Published', scheduled: 'Scheduled', posted: 'Posted', awaiting_image: 'Awaiting image' };
+
+// The zone the times in the schedule picker are meant in — sent with the
+// request so the pin fires at that wall-clock time wherever Zernio runs.
+const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+function formatWhen(value) {
+  const moment = new Date(value);
+  if (isNaN(moment)) return value;
+  return moment.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+// datetime-local wants local wall-clock time, so build the string by hand
+// rather than via toISOString (which would shift it to UTC).
+function defaultScheduleValue() {
+  const moment = new Date(Date.now() + 60 * 60 * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${moment.getFullYear()}-${pad(moment.getMonth() + 1)}-${pad(moment.getDate())}`
+    + `T${pad(moment.getHours())}:${pad(moment.getMinutes())}`;
+}
+
+function pinCard(pin) {
+  const el = document.createElement('div');
+  el.className = 'pin';
+
+  const thumb = pin.hasImage
+    ? `<img class="thumb" src="/api/pins/${pin.slug}/image?t=${Date.now()}" alt="">`
+    : `<div class="thumb empty">no image</div>`;
+
+  const isGenerated = pin.template === 'generated';
+  const isOutfit = pin.template === 'outfit';
+  const links = [];
+  if (pin.liveUrl) links.push(`<a href="${pin.liveUrl}" target="_blank">${isGenerated ? 'Source link' : 'Landing page'}</a>`);
+  if (pin.pinUrl) links.push(`<a href="${pin.pinUrl}" target="_blank">Pinterest pin</a>`);
+
+  const meta = isGenerated
+    ? `${pin.slug} · generated image`
+    : isOutfit
+      ? `${pin.slug} · ${pin.productCount} wardrobe item${pin.productCount === 1 ? '' : 's'}`
+      : `${pin.slug} · ${pin.productCount} product${pin.productCount === 1 ? '' : 's'}`;
+  const waiting = pin.status === 'awaiting_image'
+    ? `<div class="when">Waiting for <code>generated-images/${pin.slug}.png</code></div>` : '';
+
+  el.innerHTML = `
+    ${thumb}
+    <div>
+      <h3>${escapeHtml(pin.title1)} ${escapeHtml(pin.title2)}<span class="badge ${pin.status}">${STATUS_LABEL[pin.status]}</span></h3>
+      <div class="meta">${meta}</div>
+      ${pin.seoTitle ? `<div class="seo">${escapeHtml(pin.seoTitle)}</div>` : ''}
+      ${waiting}
+      ${pin.status === 'scheduled' ? `<div class="when">Goes out ${escapeHtml(formatWhen(pin.scheduledFor))}${pin.scheduledTimezone ? ` (${escapeHtml(pin.scheduledTimezone)})` : ''}</div>` : ''}
+      ${links.length ? `<div class="links">${links.join('')}</div>` : ''}
+    </div>
+    <div class="actions"></div>
+  `;
+
+  const actions = el.querySelector('.actions');
+  // The generated-image template has no products/layout to edit — it posts
+  // the ChatGPT image as-is, so there's nothing for the drag-and-drop editor to open.
+  if (!isGenerated) {
+    const editorUrl = isOutfit ? `/outfit/${pin.slug}` : `/pin/${pin.slug}`;
+    actions.appendChild(button(isOutfit ? 'Style outfit' : 'Edit', 'btn-secondary', () => location.href = editorUrl));
+  }
+
+  if (pin.status === 'awaiting_image') {
+    actions.appendChild(button('Mark as failed', 'btn-danger', async (btn) => {
+      if (!confirm(`Move the reference photo for ${pin.slug} to failed-inputs/? Do this if you're not going to generate an image for it.`)) return;
+      btn.disabled = true;
+      try {
+        await api(`/api/pins/${pin.slug}/mark-failed`, { method: 'POST' });
+        loadPins();
+      } catch (e) {
+        alert(e.message);
+        btn.disabled = false;
+      }
+    }));
+  } else if (pin.status === 'rendered') {
+    actions.appendChild(button('Publish & post', 'btn-primary', (btn) => publishAndPost(pin.slug, btn)));
+    actions.appendChild(scheduleControl(pin.slug));
+  } else if (pin.status === 'published') {
+    actions.appendChild(button('Post to Pinterest', 'btn-primary', (btn) => runPost(pin.slug, btn)));
+    actions.appendChild(scheduleControl(pin.slug));
+  } else if (pin.status === 'posted' && !isGenerated) {
+    actions.appendChild(button('Re-publish page', 'btn-secondary', (btn) => runPublish(pin.slug, btn)));
+  }
+
+  actions.appendChild(button('Delete', 'btn-danger', async (btn) => {
+    if (!confirm(`Delete local files for ${pin.slug}?\n\nAnything already published or posted stays live — this only clears the working folder.`)) return;
+    btn.disabled = true;
+    await api(`/api/pins/${pin.slug}`, { method: 'DELETE' });
+    loadPins();
+  }));
+
+  return el;
+}
+
+function scheduleControl(slug) {
+  const row = document.createElement('div');
+  row.className = 'schedule-row';
+
+  const picker = document.createElement('input');
+  picker.type = 'datetime-local';
+  picker.value = defaultScheduleValue();
+  row.appendChild(picker);
+
+  row.appendChild(button('Schedule', 'btn-secondary', (btn) => runSchedule(slug, picker.value, btn)));
+  return row;
+}
+
+function button(label, className, onClick) {
+  const btn = document.createElement('button');
+  btn.className = className;
+  btn.textContent = label;
+  btn.addEventListener('click', () => onClick(btn));
+  return btn;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+async function loadPins() {
+  const pins = await api('/api/pins');
+  const list = $('pinList');
+  list.innerHTML = '';
+  if (!pins.length) {
+    list.innerHTML = '<div class="empty-state">No pins yet — build one above.</div>';
+    return;
+  }
+  pins.forEach(pin => list.appendChild(pinCard(pin)));
+}
+
+// ---------- Actions ----------
+
+async function runPublish(slug, btn) {
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Publishing...';
+  try {
+    await api(`/api/pins/${slug}/publish`, { method: 'POST' });
+    await loadPins();
+  } catch (e) {
+    alert(`Publish failed: ${e.message}`);
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+
+async function runPost(slug, btn) {
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Posting...';
+  try {
+    await api(`/api/pins/${slug}/post`, { method: 'POST' });
+    await loadPins();
+  } catch (e) {
+    alert(`Posting failed: ${e.message}`);
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+
+// Publishing can't be deferred — the scheduled pin links to the landing page,
+// so that has to be live before the pin goes out.
+async function runSchedule(slug, when, btn) {
+  if (!when) return alert('Pick a date and time first.');
+  if (!confirm(`Schedule ${slug} to post at ${formatWhen(when)}?\n\nIts landing page goes live now. Zernio can't cancel a scheduled post through the API — you'd have to change it in their dashboard.`)) return;
+
+  btn.disabled = true; btn.textContent = 'Scheduling...';
+  try {
+    const pins = await api('/api/pins');
+    if (pins.find(p => p.slug === slug).status === 'rendered') {
+      btn.textContent = 'Publishing...';
+      await api(`/api/pins/${slug}/publish`, { method: 'POST' });
+    }
+    btn.textContent = 'Scheduling...';
+    await api(`/api/pins/${slug}/schedule`, {
+      method: 'POST',
+      body: JSON.stringify({ at: when, timezone: BROWSER_TIMEZONE }),
+    });
+    await loadPins();
+  } catch (e) {
+    alert(`Scheduling failed: ${e.message}`);
+    btn.disabled = false; btn.textContent = 'Schedule';
+    loadPins();
+  }
+}
+
+async function publishAndPost(slug, btn) {
+  btn.disabled = true; btn.textContent = 'Publishing...';
+  try {
+    await api(`/api/pins/${slug}/publish`, { method: 'POST' });
+    btn.textContent = 'Posting...';
+    await api(`/api/pins/${slug}/post`, { method: 'POST' });
+    await loadPins();
+  } catch (e) {
+    alert(`Failed: ${e.message}`);
+    btn.disabled = false; btn.textContent = 'Publish & post';
+    loadPins();
+  }
+}
+
+$('publishAllBtn').addEventListener('click', async (e) => {
+  const btn = e.target;
+  const pins = await api('/api/pins');
+  const ready = pins.filter(p => p.status === 'rendered' || p.status === 'published');
+  if (!ready.length) return alert('Nothing is ready to publish. Open a pin in the editor and save it first.');
+  if (!confirm(`Publish and post ${ready.length} pin(s) to Pinterest?`)) return;
+
+  btn.disabled = true;
+  const failures = [];
+  for (const pin of ready) {
+    btn.textContent = `Working on ${pin.slug}...`;
+    try {
+      if (pin.status === 'rendered') await api(`/api/pins/${pin.slug}/publish`, { method: 'POST' });
+      await api(`/api/pins/${pin.slug}/post`, { method: 'POST' });
+    } catch (err) {
+      failures.push(`${pin.slug}: ${err.message}`);
+    }
+  }
+  btn.disabled = false;
+  btn.textContent = 'Publish & post everything ready';
+  await loadPins();
+  if (failures.length) alert(`Some pins failed:\n\n${failures.join('\n')}`);
+});
+
+// ---------- Find products ----------
+
+let finds = [];
+const picked = new Set();
+
+function findCard(product, index) {
+  const el = document.createElement('div');
+  el.className = 'find';
+  el.innerHTML = `
+    <span class="score">${Math.round(product.score)}/10</span>
+    <img src="${product.image_url}" alt="" loading="lazy">
+    <div class="name">${escapeHtml(product.title)}</div>
+    <div class="why">${escapeHtml(product.reason || '')}</div>
+    <div class="stars">${product.rating}★ · ${product.reviews} reviews</div>
+  `;
+  el.addEventListener('click', () => {
+    // Picking more than a pin holds would silently drop the extras later.
+    if (!picked.has(index) && picked.size >= MAX_PRODUCTS) {
+      return alert(`A pin holds at most ${MAX_PRODUCTS} products.`);
+    }
+    picked.has(index) ? picked.delete(index) : picked.add(index);
+    el.classList.toggle('picked', picked.has(index));
+    $('useSelectedBtn').style.display = picked.size ? '' : 'none';
+    $('useSelectedBtn').textContent = `Use ${picked.size} selected`;
+  });
+  return el;
+}
+
+$('discoverBtn').addEventListener('click', async () => {
+  const btn = $('discoverBtn');
+  const log = $('discoverLog');
+  const errorEl = $('discoverError');
+  errorEl.textContent = '';
+  log.textContent = '';
+  $('finds').innerHTML = '';
+  finds = [];
+  picked.clear();
+  $('useSelectedBtn').style.display = 'none';
+
+  const payload = { vibe: $('vibe').value.trim(), terms: parseInt($('terms').value, 10) };
+  if (!payload.vibe) return errorEl.textContent = "Describe the look you're after.";
+
+  btn.disabled = true; btn.textContent = 'Searching...';
+  try {
+    const { jobId } = await api('/api/discover', { method: 'POST', body: JSON.stringify(payload) });
+    const result = await pollJob(jobId, (messages) => {
+      log.textContent = messages.join('\n');
+      log.scrollTop = log.scrollHeight;
+    });
+
+    finds = result.products || [];
+    if (!finds.length) {
+      errorEl.textContent = `Nothing worth pinning out of ${result.considered} candidates. Try a different look.`;
+    }
+    finds.forEach((product, index) => $('finds').appendChild(findCard(product, index)));
+  } catch (e) {
+    errorEl.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Find products';
+  }
+});
+
+$('useSelectedBtn').addEventListener('click', () => {
+  const chosen = [...picked].sort((a, b) => a - b).map(i => finds[i]);
+  const existing = $('urls').value.trim();
+  $('urls').value = (existing ? existing + '\n' : '') + chosen.map(p => p.url).join('\n');
+  if (!$('title1').value.trim()) $('title1').value = $('vibe').value.trim();
+  $('urls').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+// ---------- Template switch ----------
+
+$('pinTemplate').addEventListener('change', () => {
+  const template = $('pinTemplate').value;
+  $('productForm').style.display = template === 'product' ? '' : 'none';
+  $('generatedForm').style.display = template === 'generated' ? '' : 'none';
+  $('outfitForm').style.display = template === 'outfit' ? '' : 'none';
+});
+
+$('createOutfitBtn').addEventListener('click', async () => {
+  const btn = $('createOutfitBtn');
+  const errorEl = $('outfitError');
+  errorEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+  try {
+    const pin = await api('/api/outfit-pins', {
+      method: 'POST',
+      body: JSON.stringify({
+        title1: $('outfitTitle1').value.trim(),
+        title2: $('outfitTitle2').value.trim(),
+      }),
+    });
+    location.href = `/outfit/${pin.slug}`;
+  } catch (e) {
+    errorEl.textContent = e.message;
+    btn.disabled = false;
+    btn.textContent = 'Open outfit studio';
+  }
+});
+
+// ---------- Build ----------
+
+// A blank line between blocks means "build several pins, one per block" —
+// otherwise every line is one product in a single collage pin, as before.
+function splitGroups(text) {
+  return text.split(/\n\s*\n/)
+    .map(block => block.split('\n').map(u => u.trim()).filter(Boolean))
+    .filter(group => group.length);
+}
+
+$('buildBtn').addEventListener('click', async () => {
+  const btn = $('buildBtn');
+  const log = $('buildLog');
+  const errorEl = $('buildError');
+  errorEl.textContent = '';
+  log.textContent = '';
+
+  const title1 = $('title1').value.trim();
+  const title2 = $('title2').value.trim();
+  const groups = splitGroups($('urls').value);
+
+  if (groups.length > 1) {
+    btn.disabled = true; btn.textContent = `Building ${groups.length} pins...`;
+    try {
+      const { jobId } = await api('/api/pins/batch', {
+        method: 'POST', body: JSON.stringify({ title1, title2, groups }),
+      });
+      const result = await pollJob(jobId, (messages) => {
+        log.textContent = messages.join('\n');
+        log.scrollTop = log.scrollHeight;
+      });
+      $('urls').value = '';
+      await loadPins();
+      let message = `Built ${result.pins.length} of ${groups.length} pin(s).`;
+      if (result.errors.length) message += `\n\n${result.errors.join('\n')}`;
+      alert(message);
+    } catch (e) {
+      errorEl.textContent = e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Build pin';
+    }
+    return;
+  }
+
+  const payload = { title1, title2, urls: groups[0] || [] };
+
+  btn.disabled = true; btn.textContent = 'Building...';
+  try {
+    const { jobId } = await api('/api/pins', { method: 'POST', body: JSON.stringify(payload) });
+    const pin = await pollJob(jobId, (messages) => {
+      log.textContent = messages.join('\n');
+      log.scrollTop = log.scrollHeight;
+    });
+    $('urls').value = '';
+    await loadPins();
+    if (confirm(`Built ${pin.slug}. Open it in the editor now?`)) location.href = `/pin/${pin.slug}`;
+  } catch (e) {
+    errorEl.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Build pin';
+  }
+});
+
+async function pollJob(jobId, onProgress) {
+  while (true) {
+    const job = await api(`/api/jobs/${jobId}`);
+    onProgress(job.messages);
+    if (job.status === 'done') return job.result;
+    if (job.status === 'error') throw new Error(job.error);
+    await new Promise(r => setTimeout(r, 700));
+  }
+}
+
+// ---------- Generated-image pin ----------
+
+$('saveLinkBtn').addEventListener('click', async () => {
+  const btn = $('saveLinkBtn');
+  const errorEl = $('generatedError');
+  const statusEl = $('generatedStatus');
+  const log = $('generatedLog');
+  errorEl.textContent = '';
+  statusEl.textContent = '';
+  log.textContent = '';
+
+  const title = $('generatedTitle').value.trim();
+  const urls = $('generatedUrl').value.split('\n').map(u => u.trim()).filter(Boolean);
+  if (!urls.length) return errorEl.textContent = 'At least one product link is required.';
+
+  if (urls.length > 1) {
+    btn.disabled = true; btn.textContent = `Saving ${urls.length} photos...`;
+    try {
+      const { jobId } = await api('/api/generated-pins/batch', {
+        method: 'POST', body: JSON.stringify({ title, urls }),
+      });
+      const result = await pollJob(jobId, (messages) => {
+        log.textContent = messages.join('\n');
+        log.scrollTop = log.scrollHeight;
+      });
+      $('generatedUrl').value = '';
+      $('generatedTitle').value = '';
+      statusEl.textContent = `Saved ${result.pins.length} of ${urls.length} reference photo(s). `
+        + 'Generate pins from them and save each result as generated-images/<slug>.png.';
+      if (result.errors.length) errorEl.textContent = result.errors.join(' \u00b7 ');
+      await loadPins();
+    } catch (e) {
+      errorEl.textContent = e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save reference photo';
+    }
+    return;
+  }
+
+  const payload = { url: urls[0], title };
+
+  btn.disabled = true; btn.textContent = 'Fetching photo...';
+  try {
+    const pin = await api('/api/generated-pins', { method: 'POST', body: JSON.stringify(payload) });
+    $('generatedUrl').value = '';
+    $('generatedTitle').value = '';
+    statusEl.textContent = `Saved. Generate a pin from it and save the result as generated-images/${pin.slug}.png.`;
+    await loadPins();
+  } catch (e) {
+    errorEl.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save reference photo';
+  }
+});
+
+// ---------- Auto-post queue (drip scheduling) ----------
+
+function describeDrip(config) {
+  if (!config.enabled) return 'Off';
+  const next = config.nextSlot || config.next_slot;
+  return `Every ${config.intervalHours ?? config.interval_hours}h — next slot ${next ? formatWhen(next) : '?'}`;
+}
+
+async function loadDripStatus() {
+  const config = await api('/api/drip');
+  $('dripStatusText').textContent = describeDrip({
+    enabled: config.enabled, intervalHours: config.interval_hours, nextSlot: config.next_slot,
+  });
+  $('dripEnableBtn').style.display = config.enabled ? 'none' : '';
+  $('dripDisableBtn').style.display = config.enabled ? '' : 'none';
+  if (config.interval_hours) $('dripInterval').value = config.interval_hours;
+}
+
+$('dripEnableBtn').addEventListener('click', async () => {
+  const errorEl = $('dripError');
+  errorEl.textContent = '';
+  const intervalHours = parseFloat($('dripInterval').value);
+  if (!intervalHours || intervalHours <= 0) return errorEl.textContent = 'Enter a number of hours greater than 0.';
+
+  try {
+    await api('/api/drip', {
+      method: 'POST',
+      body: JSON.stringify({ intervalHours, timezone: BROWSER_TIMEZONE }),
+    });
+    await loadDripStatus();
+  } catch (e) {
+    errorEl.textContent = e.message;
+  }
+});
+
+$('dripDisableBtn').addEventListener('click', async () => {
+  await api('/api/drip', { method: 'POST', body: JSON.stringify({ enabled: false }) });
+  await loadDripStatus();
+});
+
+// ---------- Init ----------
+
+loadPins();
+loadDripStatus();
+let MAX_PRODUCTS = 6;
+api('/api/config').then(config => {
+  const link = $('shopLink');
+  if (config.shopUrl) link.href = config.shopUrl;
+  else link.style.display = 'none';
+  if (config.maxProducts) MAX_PRODUCTS = config.maxProducts;
+});
+</script>
+
+</body>
+</html>

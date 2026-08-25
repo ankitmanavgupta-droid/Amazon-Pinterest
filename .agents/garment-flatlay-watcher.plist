@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.openai.codex.amazon-pinterest-garment-watcher</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/user/Documents/Projects/Amazon-Pinterest/.agents/skills/garment-flatlay-generator/scripts/watch_folder.py</string>
+    <string>--project-root</string>
+    <string>/Users/user/Documents/Projects/Amazon-Pinterest</string>
+    <string>--poll-seconds</string>
+    <string>2</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/user/Documents/Projects/Amazon-Pinterest</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>ThrottleInterval</key>
+  <integer>5</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/user/Documents/Projects/Amazon-Pinterest/.garment-flatlay-watcher.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/user/Documents/Projects/Amazon-Pinterest/.garment-flatlay-watcher.error.log</string>
+</dict>
+</plist>

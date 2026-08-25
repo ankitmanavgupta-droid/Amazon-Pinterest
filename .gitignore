@@ -2,3 +2,14 @@ venv/
 __pycache__/
 *.pyc
 .env
+posts/
+links.txt
+.DS_Store
+.cache/
+incoming-clothes/
+generated-images/
+processed-inputs/
+failed-inputs/
+.imagegen-state.json
+wardrobe-items/
+.slideshows.json

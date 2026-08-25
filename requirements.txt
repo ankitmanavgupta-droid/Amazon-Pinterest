@@ -1,3 +1,8 @@
 requests
 python-dotenv
 pytest
+flask
+rembg
+onnxruntime
+Pillow
+anthropic

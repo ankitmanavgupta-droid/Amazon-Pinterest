@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pin Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=EB+Garamond:ital@0;1&family=Alex+Brush&family=Pinyon+Script&family=Parisienne&family=Great+Vibes&family=Sacramento&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f4f4f4;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ---------- Sidebar ---------- */
+  #sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    background: #fff;
+    border-right: 1px solid #ddd;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  #sidebar h1 { font-size: 16px; margin: 0 0 4px; }
+  .back-link { display: inline-block; font-size: 12px; color: #b91c4a; text-decoration: none; margin-bottom: 10px; }
+  .back-link:hover { text-decoration: underline; }
+  #sidebar input[readonly] { background: #f4f4f5; color: #71717a; }
+  #sidebar p.hint { font-size: 12px; color: #777; margin: 0 0 20px; line-height: 1.4; }
+  #sidebar label { display: block; font-size: 12px; font-weight: 600; margin: 14px 0 4px; color: #333; }
+  #sidebar input[type=text], #sidebar textarea {
+    width: 100%; padding: 6px 8px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px;
+  }
+  #sidebar textarea { resize: vertical; min-height: 50px; }
+  .swatches { display: flex; gap: 6px; margin-top: 4px; }
+  .swatch {
+    width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;
+  }
+  .swatch.selected { border-color: #333; }
+  button {
+    cursor: pointer; border: none; border-radius: 6px; padding: 9px 12px; font-size: 13px;
+    font-weight: 600; width: 100%; margin-top: 8px;
+  }
+  .btn-primary { background: #111; color: #fff; }
+  .btn-secondary { background: #eee; color: #111; }
+  .btn-danger { background: #fdecea; color: #c0392b; }
+  input[type=file] { font-size: 12px; margin-top: 6px; width: 100%; }
+  hr { border: none; border-top: 1px solid #eee; margin: 18px 0; }
+  #selectedControls { display: none; }
+  #selectedControls.active { display: block; }
+
+  /* ---------- Stage ---------- */
+  #stageWrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eaeaea;
+  }
+  #stage {
+    width: 500px;
+    height: 750px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    background: #f6d9df;
+  }
+  .text-layer {
+    position: absolute;
+    text-align: center;
+    color: #5a4632;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+  }
+  .text-layer:hover, .text-layer.selected {
+    outline: 1px dashed #2d6cdf;
+    outline-offset: 6px;
+  }
+  #brandPill {
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    justify-content: center;
+  }
+  #brandPill span {
+    background: #fff;
+    border-radius: 20px;
+    padding: 6px 22px;
+    font-style: italic;
+    font-size: 13px;
+    font-family: Georgia, 'Times New Roman', serif;
+    white-space: nowrap;
+  }
+  #titleLine1 {
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-block;
+    white-space: nowrap;
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 40px;
+    font-weight: 400;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  #titleLine2 {
+    top: 146px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-block;
+    white-space: nowrap;
+    font-family: 'Alex Brush', cursive;
+    font-size: 60px;
+    font-style: normal;
+    margin: 0;
+  }
+  #sidebar select {
+    width: 100%; padding: 6px 8px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; background: #fff;
+  }
+  #sidebar input[type=range] {
+    width: 100%; margin-top: 4px;
+  }
+  #captionBlock {
+    top: 600px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    display: inline-block;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  /* ---------- Layers (draggable items) ---------- */
+  .layer {
+    position: absolute;
+    cursor: grab;
+    border: 2px solid transparent;
+  }
+  .layer.selected { border-color: #2d6cdf; }
+  .layer img {
+    width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15));
+  }
+  .layer .placeholder-box {
+    width: 100%; height: 100%; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(0,0,0,0.4); font-size: 12px; font-family: sans-serif;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+  .layer .closeBtn {
+    position: absolute; top: -10px; right: -10px; width: 20px; height: 20px;
+    background: #111; color: #fff; border-radius: 50%; font-size: 12px; line-height: 20px;
+    text-align: center; cursor: pointer; display: none;
+  }
+  .layer.selected .closeBtn { display: block; }
+  .layer .resizeHandle {
+    position: absolute; width: 14px; height: 14px; right: -7px; bottom: -7px;
+    background: #2d6cdf; border-radius: 50%; cursor: nwse-resize; display: none;
+  }
+  .layer.selected .resizeHandle { display: block; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <a href="/" class="back-link">← All pins</a>
+  <h1>Pin Builder</h1>
+  <p class="hint">Drag items to reposition, drag the blue dot to resize, click an item to select it. Saving stores the layout, so you can come back and re-edit this pin.</p>
+
+  <label>Background</label>
+  <div class="swatches" id="swatches">
+    <div class="swatch selected" style="background:#f6d9df" data-color="#f6d9df"></div>
+    <div class="swatch" style="background:#f3ede1" data-color="#f3ede1"></div>
+    <div class="swatch" style="background:#e3e8dd" data-color="#e3e8dd"></div>
+    <div class="swatch" style="background:#dfe6ee" data-color="#dfe6ee"></div>
+    <div class="swatch" style="background:#efe1d1" data-color="#efe1d1"></div>
+    <div class="swatch" style="background:#ffffff" data-color="#ffffff"></div>
+  </div>
+
+  <label for="brandInput">Brand name</label>
+  <input type="text" id="brandInput" value="Stellar Studio">
+
+  <label for="title1Input">Title (line 1)</label>
+  <input type="text" id="title1Input" value="Casual Beach">
+
+  <label for="title2Input">Title (line 2, script)</label>
+  <input type="text" id="title2Input" value="Outfit">
+
+  <label for="titleFont1Select">Title font (line 1)</label>
+  <select id="titleFont1Select">
+    <option value="Playfair Display" selected>Playfair Display</option>
+    <option value="Cormorant Garamond">Cormorant Garamond</option>
+    <option value="EB Garamond">EB Garamond</option>
+    <option value="Georgia">Georgia (system)</option>
+  </select>
+
+  <label for="titleSize1Input">Title size (line 1): <span id="titleSize1Value">40</span>px</label>
+  <input type="range" id="titleSize1Input" min="16" max="80" value="40">
+
+  <label for="titleFont2Select">Title font (line 2, script)</label>
+  <select id="titleFont2Select">
+    <option value="Alex Brush" selected>Alex Brush</option>
+    <option value="Pinyon Script">Pinyon Script</option>
+    <option value="Parisienne">Parisienne</option>
+    <option value="Great Vibes">Great Vibes</option>
+    <option value="Sacramento">Sacramento</option>
+  </select>
+
+  <label for="titleSize2Input">Title size (line 2): <span id="titleSize2Value">60</span>px</label>
+  <input type="range" id="titleSize2Input" min="20" max="120" value="60">
+
+  <label for="captionInput">Caption</label>
+  <textarea id="captionInput">The key to a beach outfit is simple: comfortable + breathable + stylish. Perfect for a relaxed stroll or just enjoying the sunset.</textarea>
+
+  <label for="captionSizeInput">Caption size: <span id="captionSizeValue">13</span>px</label>
+  <input type="range" id="captionSizeInput" min="8" max="28" value="13">
+
+  <hr>
+
+  <button class="btn-secondary" id="arrangeBtn">Centre items evenly</button>
+  <button class="btn-secondary" id="addPlaceholderBtn">+ Add placeholder item</button>
+  <label>Add real photo(s)</label>
+  <input type="file" id="fileInput" accept="image/*" multiple>
+
+  <div id="selectedControls">
+    <hr>
+    <label>Selected item</label>
+    <label for="layerUrlInput">Amazon product link</label>
+    <input type="text" id="layerUrlInput" placeholder="https://www.amazon.com/dp/...">
+    <button class="btn-secondary" id="bringFrontBtn">Bring to front</button>
+    <button class="btn-danger" id="deleteBtn">Delete item</button>
+  </div>
+
+  <hr>
+  <label for="slugInput">Post slug (filename / URL)</label>
+  <input type="text" id="slugInput" value="" readonly>
+
+  <button class="btn-primary" id="exportBtn">Save pin</button>
+  <p class="hint" id="exportStatus"></p>
+</div>
+
+<div id="stageWrap">
+  <div id="stage">
+    <div id="brandPill" class="text-layer"><span id="brandText">Stellar Studio</span></div>
+    <div id="titleLine1" class="text-layer">Casual Beach</div>
+    <div id="titleLine2" class="text-layer">Outfit</div>
+    <div id="captionBlock" class="text-layer"><span id="captionText">The key to a beach outfit is simple: comfortable + breathable + stylish. Perfect for a relaxed stroll or just enjoying the sunset.</span></div>
+    <!-- draggable layers get injected here -->
+  </div>
+</div>
+
+<script>
+const stage = document.getElementById('stage');
+const SCALE = 2; // export resolution multiplier (stage is 500x750 -> exports at 1000x1500)
+
+// Which pin this editor is editing, from the /pin/<slug> URL. Null when the
+// template is opened directly as a file, which still works for experimenting.
+const PIN_SLUG = (location.pathname.match(/^\/pin\/(.+)$/) || [])[1] || null;
+
+let layers = [];
+let nextZ = 10;
+let selectedLayer = null;
+
+const placeholderColors = ['#d8b4a0', '#c9d6c0', '#e8c4c4', '#c3c9dc', '#e0d2a8'];
+let placeholderIndex = 0;
+
+// Products sit in one centered block between the title and the caption, every
+// item the same size — so a pin with four tops reads as a tidy grid rather than
+// a scatter. Items are square boxes and the cutouts are object-fit: contain, so
+// equal boxes means equal on-pin scale whatever each photo's aspect ratio is.
+const PRODUCT_ZONE = { x: 50, y: 240, w: 400, h: 350 };
+const PRODUCT_GAP = 16;
+
+// Cells take the row height going spare rather than staying square, up to this
+// much taller than they are wide — a row of three would otherwise be squeezed
+// into small squares while half the zone sat empty. Product cutouts are mostly
+// portrait, so the extra height is height they actually fill.
+const MAX_CELL_RATIO = 1.4;
+
+// How many items go on each row, for each total count.
+const ROW_LAYOUTS = { 1: [1], 2: [2], 3: [3], 4: [2, 2], 5: [3, 2], 6: [3, 3] };
+
+function rowsFor(count) {
+  if (ROW_LAYOUTS[count]) return ROW_LAYOUTS[count];
+  const rows = [];
+  for (let left = count; left > 0; left -= 3) rows.push(Math.min(3, left));
+  return rows;
+}
+
+// One identically-sized cell per item, the whole block centered in the zone and
+// each row centered within it (so a trailing short row sits in the middle).
+function gridPositions(count) {
+  if (count < 1) return [];
+  const rows = rowsFor(count);
+  const columns = Math.max(...rows);
+  const width = (PRODUCT_ZONE.w - PRODUCT_GAP * (columns - 1)) / columns;
+  const height = Math.min(
+    (PRODUCT_ZONE.h - PRODUCT_GAP * (rows.length - 1)) / rows.length,
+    width * MAX_CELL_RATIO,
+  );
+  const blockHeight = height * rows.length + PRODUCT_GAP * (rows.length - 1);
+  const top = PRODUCT_ZONE.y + (PRODUCT_ZONE.h - blockHeight) / 2;
+
+  const spots = [];
+  rows.forEach((rowCount, rowIndex) => {
+    const rowWidth = width * rowCount + PRODUCT_GAP * (rowCount - 1);
+    const left = PRODUCT_ZONE.x + (PRODUCT_ZONE.w - rowWidth) / 2;
+    for (let column = 0; column < rowCount; column++) {
+      spots.push({
+        x: left + column * (width + PRODUCT_GAP),
+        y: top + rowIndex * (height + PRODUCT_GAP),
+        w: width,
+        h: height,
+      });
+    }
+  });
+  return spots;
+}
+
+// Set once anything is dragged or resized (or a saved layout is loaded), which
+// stops adding another item from undoing hand-placed work.
+let layoutTouched = false;
+
+function arrangeLayers() {
+  const spots = gridPositions(layers.length);
+  layers.forEach((layerObj, index) => {
+    const spot = spots[index];
+    layerObj.el.style.left = spot.x + 'px';
+    layerObj.el.style.top = spot.y + 'px';
+    layerObj.el.style.width = spot.w + 'px';
+    layerObj.el.style.height = spot.h + 'px';
+  });
+}
+
+// Where an item added right now would land, before the re-arrange.
+function nextSpot() {
+  return gridPositions(layers.length + 1)[layers.length];
+}
+
+function createLayer(x, y, w, h, content) {
+  const layer = document.createElement('div');
+  layer.className = 'layer';
+  layer.style.left = x + 'px';
+  layer.style.top = y + 'px';
+  layer.style.width = w + 'px';
+  layer.style.height = h + 'px';
+  layer.style.zIndex = nextZ++;
+  layer.appendChild(content);
+
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'closeBtn';
+  closeBtn.textContent = '×';
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    layer.remove();
+    layers = layers.filter(l => l.el !== layer);
+    if (selectedLayer && selectedLayer.el === layer) deselect();
+    if (!layoutTouched) arrangeLayers();
+  });
+  layer.appendChild(closeBtn);
+
+  const handle = document.createElement('div');
+  handle.className = 'resizeHandle';
+  layer.appendChild(handle);
+
+  stage.appendChild(layer);
+
+  const layerObj = { el: layer, isImage: content.tagName === 'IMG', imgEl: content.tagName === 'IMG' ? content : null, color: content.dataset ? content.dataset.color : null, url: '' };
+  layers.push(layerObj);
+
+  makeDraggable(layer);
+  makeResizable(layer, handle);
+
+  layer.addEventListener('pointerdown', () => select(layerObj));
+  select(layerObj);
+  return layerObj;
+}
+
+function addPlaceholder() {
+  const color = placeholderColors[placeholderIndex % placeholderColors.length];
+  placeholderIndex++;
+  const box = document.createElement('div');
+  box.className = 'placeholder-box';
+  box.style.background = color;
+  box.dataset.color = color;
+  box.textContent = 'Product';
+  const spot = nextSpot();
+  createLayer(spot.x, spot.y, spot.w, spot.h, box);
+  if (!layoutTouched) arrangeLayers();
+}
+
+function addImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = document.createElement('img');
+    img.src = e.target.result;
+    const spot = nextSpot();
+    createLayer(spot.x, spot.y, spot.w, spot.h, img);
+    if (!layoutTouched) arrangeLayers();
+  };
+  reader.readAsDataURL(file);
+}
+
+function select(layerObj) {
+  if (selectedLayer) selectedLayer.el.classList.remove('selected');
+  selectedLayer = layerObj;
+  selectedLayer.el.classList.add('selected');
+  document.getElementById('selectedControls').classList.add('active');
+  document.getElementById('layerUrlInput').value = selectedLayer.url || '';
+}
+
+document.getElementById('layerUrlInput').addEventListener('input', (e) => {
+  if (selectedLayer) selectedLayer.url = e.target.value.trim();
+});
+
+function deselect() {
+  if (selectedLayer) selectedLayer.el.classList.remove('selected');
+  selectedLayer = null;
+  document.getElementById('selectedControls').classList.remove('active');
+}
+
+stage.addEventListener('pointerdown', (e) => {
+  if (e.target === stage) deselect();
+});
+
+// Makes a centered text block (brand/title/caption) draggable.
+// On first drag it "unpins" from its centered left:50%/transform positioning
+// and switches to explicit left/top, same coordinate system as image layers.
+function makeTextDraggable(el) {
+  let startX, startY, origLeft, origTop, dragging = false;
+
+  function freeIfNeeded() {
+    if (el.dataset.freed) return;
+    const stageRect = stage.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    el.style.left = (elRect.left - stageRect.left) + 'px';
+    el.style.top = (elRect.top - stageRect.top) + 'px';
+    el.style.transform = 'none';
+    el.dataset.freed = '1';
+  }
+
+  el.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    freeIfNeeded();
+    el.setPointerCapture(e.pointerId);
+    startX = e.clientX;
+    startY = e.clientY;
+    origLeft = parseFloat(el.style.left);
+    origTop = parseFloat(el.style.top);
+    el.style.cursor = 'grabbing';
+  });
+
+  el.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    el.style.left = (origLeft + dx) + 'px';
+    el.style.top = (origTop + dy) + 'px';
+    keepInsideStage(el);
+  });
+
+  el.addEventListener('pointerup', () => {
+    dragging = false;
+    el.style.cursor = 'grab';
+  });
+}
+
+['brandPill', 'titleLine1', 'titleLine2', 'captionBlock'].forEach((id) => {
+  makeTextDraggable(document.getElementById(id));
+});
+
+function makeDraggable(layer) {
+  let startX, startY, origLeft, origTop, dragging = false;
+
+  layer.addEventListener('pointerdown', (e) => {
+    if (e.target.classList.contains('resizeHandle') || e.target.classList.contains('closeBtn')) return;
+    dragging = true;
+    layer.setPointerCapture(e.pointerId);
+    startX = e.clientX;
+    startY = e.clientY;
+    origLeft = parseFloat(layer.style.left);
+    origTop = parseFloat(layer.style.top);
+    layer.style.cursor = 'grabbing';
+  });
+
+  layer.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    layer.style.left = (origLeft + dx) + 'px';
+    layer.style.top = (origTop + dy) + 'px';
+    layoutTouched = true;
+  });
+
+  layer.addEventListener('pointerup', (e) => {
+    dragging = false;
+    layer.style.cursor = 'grab';
+  });
+}
+
+function makeResizable(layer, handle) {
+  let startX, startY, origW, origH, resizing = false;
+
+  handle.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    resizing = true;
+    handle.setPointerCapture(e.pointerId);
+    startX = e.clientX;
+    startY = e.clientY;
+    origW = parseFloat(layer.style.width);
+    origH = parseFloat(layer.style.height);
+  });
+
+  handle.addEventListener('pointermove', (e) => {
+    if (!resizing) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    layer.style.width = Math.max(40, origW + dx) + 'px';
+    layer.style.height = Math.max(40, origH + dy) + 'px';
+    layoutTouched = true;
+  });
+
+  handle.addEventListener('pointerup', () => { resizing = false; });
+}
+
+document.getElementById('arrangeBtn').addEventListener('click', () => {
+  layoutTouched = false;
+  arrangeLayers();
+});
+
+document.getElementById('addPlaceholderBtn').addEventListener('click', addPlaceholder);
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  Array.from(e.target.files).forEach(addImageFile);
+  e.target.value = '';
+});
+
+document.getElementById('bringFrontBtn').addEventListener('click', () => {
+  if (selectedLayer) selectedLayer.el.style.zIndex = nextZ++;
+});
+
+document.getElementById('deleteBtn').addEventListener('click', () => {
+  if (selectedLayer) {
+    selectedLayer.el.remove();
+    layers = layers.filter(l => l !== selectedLayer);
+    deselect();
+    if (!layoutTouched) arrangeLayers();
+  }
+});
+
+document.getElementById('swatches').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('swatch')) return;
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+  e.target.classList.add('selected');
+  stage.style.background = e.target.dataset.color;
+});
+
+// ---------- Fitting text to the pin ----------
+// A title is one unwrapped line at whatever size the slider asks for, so a long
+// one runs off the sides of the pin (and the caption runs off the bottom).
+// Rather than clip it, each block is shrunk until it fits: the slider keeps the
+// size you asked for and the label shows what was actually used. Centring is
+// automatic — the blocks are centred on the stage until you drag one, and a
+// dragged one is pulled back inside if re-fitting leaves it hanging off an edge.
+
+const TEXT_MARGIN = 30;    // clear space kept either side of a line of text
+const MIN_TEXT_SIZE = 9;
+const BRAND_TEXT_SIZE = 13;  // matches #brandPill span in the stylesheet
+
+function textFitWidth() {
+  return stage.offsetWidth - TEXT_MARGIN * 2;
+}
+
+// Text width is near enough linear in font size, so one proportional guess
+// lands it and the loop is only mopping up rounding.
+function fitToWidth(el, requestedSize, maxWidth) {
+  el.style.fontSize = requestedSize + 'px';
+  const width = el.getBoundingClientRect().width;
+  if (width <= maxWidth) return requestedSize;
+
+  let size = Math.max(MIN_TEXT_SIZE, Math.floor(requestedSize * maxWidth / width));
+  el.style.fontSize = size + 'px';
+  while (size > MIN_TEXT_SIZE && el.getBoundingClientRect().width > maxWidth) {
+    size -= 1;
+    el.style.fontSize = size + 'px';
+  }
+  return size;
+}
+
+// The caption wraps inside a fixed width, so what it overruns is the bottom of
+// the pin rather than the sides.
+function fitCaptionToHeight(requestedSize) {
+  const block = document.getElementById('captionBlock');
+  const text = document.getElementById('captionText');
+  text.style.fontSize = requestedSize + 'px';
+
+  const topOnStage = block.getBoundingClientRect().top - stage.getBoundingClientRect().top;
+  const available = stage.offsetHeight - topOnStage - TEXT_MARGIN;
+
+  let size = requestedSize;
+  while (size > MIN_TEXT_SIZE && block.getBoundingClientRect().height > available) {
+    size -= 1;
+    text.style.fontSize = size + 'px';
+  }
+  return size;
+}
+
+// A block that's been dragged holds explicit coordinates, so a re-fit can leave
+// it hanging off an edge. Blocks that haven't been dragged stay centred by CSS.
+function keepInsideStage(el) {
+  if (!el.dataset.freed) return;
+  const rect = el.getBoundingClientRect();
+  const maxLeft = Math.max(0, stage.offsetWidth - rect.width);
+  const maxTop = Math.max(0, stage.offsetHeight - rect.height);
+  el.style.left = Math.min(Math.max(parseFloat(el.style.left), 0), maxLeft) + 'px';
+  el.style.top = Math.min(Math.max(parseFloat(el.style.top), 0), maxTop) + 'px';
+}
+
+function showFittedSize(valueId, requested, fitted) {
+  document.getElementById(valueId).textContent =
+    fitted < requested ? `${requested}px → ${fitted}` : String(requested);
+}
+
+function refitTitle(lineNumber) {
+  const el = document.getElementById(`titleLine${lineNumber}`);
+  const requested = parseFloat(document.getElementById(`titleSize${lineNumber}Input`).value);
+  showFittedSize(`titleSize${lineNumber}Value`, requested, fitToWidth(el, requested, textFitWidth()));
+  keepInsideStage(el);
+}
+
+function refitBrand() {
+  fitToWidth(document.getElementById('brandText'), BRAND_TEXT_SIZE, textFitWidth());
+  keepInsideStage(document.getElementById('brandPill'));
+}
+
+function refitCaption() {
+  const requested = parseFloat(document.getElementById('captionSizeInput').value);
+  showFittedSize('captionSizeValue', requested, fitCaptionToHeight(requested));
+  keepInsideStage(document.getElementById('captionBlock'));
+}
+
+function refitAllText() {
+  refitBrand();
+  refitTitle(1);
+  refitTitle(2);
+  refitCaption();
+}
+
+// Live text binding — every change re-fits the block it touched.
+const bindings = [
+  ['brandInput', 'brandText', refitBrand],
+  ['title1Input', 'titleLine1', () => refitTitle(1)],
+  ['title2Input', 'titleLine2', () => refitTitle(2)],
+  ['captionInput', 'captionText', refitCaption],
+];
+bindings.forEach(([inputId, textId, refit]) => {
+  const input = document.getElementById(inputId);
+  const target = document.getElementById(textId);
+  input.addEventListener('input', () => {
+    target.textContent = input.value;
+    refit();
+  });
+});
+
+// Font pickers
+document.getElementById('titleFont1Select').addEventListener('change', (e) => {
+  document.getElementById('titleLine1').style.fontFamily = `'${e.target.value}', Georgia, serif`;
+  refitTitle(1);
+});
+document.getElementById('titleFont2Select').addEventListener('change', (e) => {
+  document.getElementById('titleLine2').style.fontFamily = `'${e.target.value}', cursive`;
+  refitTitle(2);
+});
+
+// Font size sliders
+[
+  ['titleSize1Input', () => refitTitle(1)],
+  ['titleSize2Input', () => refitTitle(2)],
+  ['captionSizeInput', refitCaption],
+].forEach(([sliderId, refit]) => {
+  document.getElementById(sliderId).addEventListener('input', refit);
+});
+
+// ---------- Export ----------
+
+// Composites background + product layers + fixed text onto an offscreen canvas.
+// Shared by both the PNG export and the landing-page export (which embeds the same image).
+async function renderCanvas() {
+  await document.fonts.ready;
+  refitAllText();
+  const W = stage.offsetWidth * SCALE;
+  const H = stage.offsetHeight * SCALE;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = stage.style.background || '#f6d9df';
+  ctx.fillRect(0, 0, W, H);
+
+  // sort layers by z-index (DOM order after zIndex updates isn't guaranteed, so read style.zIndex)
+  const sorted = [...layers].sort((a, b) => parseInt(a.el.style.zIndex) - parseInt(b.el.style.zIndex));
+
+  for (const layer of sorted) {
+    const x = parseFloat(layer.el.style.left) * SCALE;
+    const y = parseFloat(layer.el.style.top) * SCALE;
+    const w = parseFloat(layer.el.style.width) * SCALE;
+    const h = parseFloat(layer.el.style.height) * SCALE;
+
+    if (layer.isImage) {
+      await drawImageRounded(ctx, layer.imgEl, x, y, w, h);
+    } else {
+      drawRoundedRect(ctx, x, y, w, h, 12 * SCALE, layer.color);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.font = `${12 * SCALE}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Product', x + w / 2, y + h / 2);
+    }
+  }
+
+  drawFixedText(ctx, W, H);
+  return canvas;
+}
+
+// ---------- Save ----------
+// The editor posts the rendered image and hotspot geometry straight back to the
+// local server, which writes pin.png and the landing page into the repo. No zip,
+// no Downloads folder, and no filename collisions to trip over.
+
+const TEXT_LAYER_IDS = ['brandPill', 'titleLine1', 'titleLine2', 'captionBlock'];
+
+function textLayerPositions() {
+  const positions = {};
+  TEXT_LAYER_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el.dataset.freed) {
+      positions[id] = { left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
+    }
+  });
+  return positions;
+}
+
+function currentLayout() {
+  return {
+    background: stage.style.background,
+    brand: document.getElementById('brandInput').value,
+    title1: document.getElementById('title1Input').value,
+    title2: document.getElementById('title2Input').value,
+    titleFont1: document.getElementById('titleFont1Select').value,
+    titleFont2: document.getElementById('titleFont2Select').value,
+    titleSize1: parseFloat(document.getElementById('titleSize1Input').value),
+    titleSize2: parseFloat(document.getElementById('titleSize2Input').value),
+    caption: document.getElementById('captionInput').value,
+    captionSize: parseFloat(document.getElementById('captionSizeInput').value),
+    textPositions: textLayerPositions(),
+    layers: layers.map(l => ({
+      left: parseFloat(l.el.style.left),
+      top: parseFloat(l.el.style.top),
+      width: parseFloat(l.el.style.width),
+      height: parseFloat(l.el.style.height),
+      zIndex: parseInt(l.el.style.zIndex, 10),
+      url: l.url || '',
+      regionalUrls: l.regionalUrls || null,
+      cutoutUrl: l.cutoutUrl || null,
+    })),
+  };
+}
+
+function hotspotGeometry() {
+  const stageW = stage.offsetWidth;
+  const stageH = stage.offsetHeight;
+  return layers.filter(l => l.url).map(l => ({
+    leftPct: (parseFloat(l.el.style.left) / stageW) * 100,
+    topPct: (parseFloat(l.el.style.top) / stageH) * 100,
+    widthPct: (parseFloat(l.el.style.width) / stageW) * 100,
+    heightPct: (parseFloat(l.el.style.height) / stageH) * 100,
+    url: l.url,
+    regionalUrls: l.regionalUrls || null,
+  }));
+}
+
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('exportStatus');
+  if (!PIN_SLUG) {
+    statusEl.textContent = 'No pin loaded — open this editor from the dashboard.';
+    return;
+  }
+
+  statusEl.textContent = 'Rendering...';
+  const canvas = await renderCanvas();
+
+  statusEl.textContent = 'Saving...';
+  try {
+    const response = await fetch(`/api/pins/${PIN_SLUG}/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image: canvas.toDataURL('image/png'),
+        hotspots: hotspotGeometry(),
+        layout: currentLayout(),
+      }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Save failed');
+    statusEl.textContent = 'Saved. Back on the dashboard you can now publish and post it.';
+  } catch (e) {
+    statusEl.textContent = `Save failed: ${e.message}`;
+  }
+});
+
+
+function drawRoundedRect(ctx, x, y, w, h, r, color) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawImageRounded(ctx, imgEl, x, y, w, h) {
+  return new Promise((resolve) => {
+    const draw = () => {
+      // object-fit: contain behavior
+      const ratio = Math.min(w / imgEl.naturalWidth, h / imgEl.naturalHeight);
+      const dw = imgEl.naturalWidth * ratio;
+      const dh = imgEl.naturalHeight * ratio;
+      const dx = x + (w - dw) / 2;
+      const dy = y + (h - dh) / 2;
+      ctx.drawImage(imgEl, dx, dy, dw, dh);
+      resolve();
+    };
+    if (imgEl.complete) draw();
+    else imgEl.onload = draw;
+  });
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  const lines = [];
+  for (const word of words) {
+    const test = line + word + ' ';
+    if (ctx.measureText(test).width > maxWidth && line !== '') {
+      lines.push(line);
+      line = word + ' ';
+    } else {
+      line = test;
+    }
+  }
+  lines.push(line);
+  lines.forEach((l, i) => ctx.fillText(l.trim(), x, y + i * lineHeight));
+  return lines.length;
+}
+
+// The size a block ended up at after fitting — what the canvas has to match,
+// which isn't the slider value whenever the text had to be shrunk.
+function renderedFontSize(id) {
+  return parseFloat(getComputedStyle(document.getElementById(id)).fontSize);
+}
+
+// Bounding box of a text block relative to the stage, scaled to export resolution.
+function stageRelativeBox(el) {
+  const stageRect = stage.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  return {
+    left: (elRect.left - stageRect.left) * SCALE,
+    top: (elRect.top - stageRect.top) * SCALE,
+    width: elRect.width * SCALE,
+    height: elRect.height * SCALE,
+    centerX: (elRect.left - stageRect.left + elRect.width / 2) * SCALE,
+  };
+}
+
+function drawFixedText(ctx, W, H) {
+  ctx.fillStyle = '#5a4632';
+  ctx.textAlign = 'center';
+
+  // brand pill
+  const brand = document.getElementById('brandText').textContent;
+  const pillBox = stageRelativeBox(document.getElementById('brandPill'));
+  const brandSize = renderedFontSize('brandText');
+  ctx.font = `italic ${brandSize * SCALE}px Georgia, serif`;
+  drawRoundedRect(ctx, pillBox.left, pillBox.top, pillBox.width, pillBox.height, pillBox.height / 2, '#ffffff');
+  ctx.fillStyle = '#5a4632';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(brand, pillBox.centerX, pillBox.top + pillBox.height / 2);
+
+  // title (each line is independently positioned)
+  const title1 = document.getElementById('titleLine1').textContent;
+  const title2 = document.getElementById('titleLine2').textContent;
+  const font1 = document.getElementById('titleFont1Select').value;
+  const font2 = document.getElementById('titleFont2Select').value;
+  const size1 = renderedFontSize('titleLine1');
+  const size2 = renderedFontSize('titleLine2');
+  const title1Box = stageRelativeBox(document.getElementById('titleLine1'));
+  const title2Box = stageRelativeBox(document.getElementById('titleLine2'));
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = `400 ${size1 * SCALE}px '${font1}', Georgia, serif`;
+  ctx.fillText(title1.toUpperCase(), title1Box.centerX, title1Box.top + size1 * 0.9 * SCALE);
+  ctx.font = `400 ${size2 * SCALE}px '${font2}', cursive`;
+  ctx.fillText(title2, title2Box.centerX, title2Box.top + size2 * 0.8 * SCALE);
+
+  // caption
+  const caption = document.getElementById('captionText').textContent;
+  const captionSize = renderedFontSize('captionText');
+  const captionBox = stageRelativeBox(document.getElementById('captionBlock'));
+  ctx.font = `${captionSize * SCALE}px Georgia, serif`;
+  wrapText(ctx, caption, captionBox.centerX, captionBox.top + captionSize * 0.9 * SCALE, captionBox.width, captionSize * 1.5 * SCALE);
+}
+
+// ---------- Loading ----------
+// The pin's data comes from the local server (/api/pins/<slug>), so the editor
+// always runs the current template instead of a stale generated copy, and a
+// saved layout can be reopened and re-edited later.
+
+function setInputAndFire(id, value, eventName) {
+  const el = document.getElementById(id);
+  el.value = value;
+  el.dispatchEvent(new Event(eventName, { bubbles: true }));
+}
+
+function loadImageAsElement(src) {
+  return new Promise((resolve, reject) => {
+    const img = document.createElement('img');
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Could not load ${src}`));
+    img.src = src;
+  });
+}
+
+function applyLayoutFields(layout) {
+  if (layout.background) {
+    stage.style.background = layout.background;
+    document.querySelectorAll('.swatch').forEach(s => {
+      s.classList.toggle('selected', s.dataset.color === layout.background);
+    });
+  }
+
+  [
+    ['brandInput', layout.brand, 'input'],
+    ['title1Input', layout.title1, 'input'],
+    ['title2Input', layout.title2, 'input'],
+    ['titleFont1Select', layout.titleFont1, 'change'],
+    ['titleFont2Select', layout.titleFont2, 'change'],
+    ['titleSize1Input', layout.titleSize1, 'input'],
+    ['titleSize2Input', layout.titleSize2, 'input'],
+    ['captionInput', layout.caption, 'input'],
+    ['captionSizeInput', layout.captionSize, 'input'],
+  ].forEach(([id, value, eventName]) => {
+    if (value !== undefined && value !== null && value !== '') setInputAndFire(id, value, eventName);
+  });
+
+  Object.entries(layout.textPositions || {}).forEach(([id, position]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.left = position.left + 'px';
+    el.style.top = position.top + 'px';
+    el.style.transform = 'none';
+    el.dataset.freed = '1';
+  });
+}
+
+async function addProductLayer(product, saved) {
+  const img = await loadImageAsElement(product.cutoutUrl);
+  const spot = saved
+    ? { x: saved.left, y: saved.top, w: saved.width, h: saved.height }
+    : nextSpot();
+  const layerObj = createLayer(spot.x, spot.y, spot.w, spot.h, img);
+  layerObj.url = (saved && saved.url) || product.url || '';
+  layerObj.regionalUrls = (saved && saved.regionalUrls) || product.regionalUrls || null;
+  layerObj.cutoutUrl = product.cutoutUrl;
+  if (saved && Number.isFinite(saved.zIndex)) layerObj.el.style.zIndex = saved.zIndex;
+  return layerObj;
+}
+
+async function loadPin() {
+  const response = await fetch(`/api/pins/${PIN_SLUG}`);
+  if (!response.ok) {
+    document.getElementById('exportStatus').textContent = 'Could not load this pin.';
+    return;
+  }
+  const pin = await response.json();
+
+  document.getElementById('slugInput').value = pin.slug;
+  document.title = `${pin.slug} — Pin Builder`;
+
+  const layout = pin.layout || {};
+  // The pin's own titles win the first time through, before any layout is saved.
+  applyLayoutFields({
+    ...layout,
+    title1: layout.title1 || pin.title1,
+    title2: layout.title2 || pin.title2,
+  });
+
+  const savedLayers = layout.layers || [];
+  const products = pin.products || [];
+  for (let i = 0; i < products.length; i++) {
+    await addProductLayer(products[i], savedLayers[i]);
+  }
+  // A saved layout is hand-placed work; only a fresh pin gets auto-arranged.
+  if (savedLayers.length) layoutTouched = true;
+  else arrangeLayers();
+
+  // Measuring text before its webfont arrives measures the fallback, so the
+  // real fit has to wait for the fonts.
+  await document.fonts.ready;
+  refitAllText();
+  deselect();
+}
+
+if (PIN_SLUG) {
+  loadPin();
+} else {
+  // Opened standalone (no pin) — seed placeholders so the canvas is still usable.
+  addPlaceholder();
+  addPlaceholder();
+  document.fonts.ready.then(refitAllText);
+}
+</script>
+
+</body>
+</html>

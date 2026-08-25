@@ -1,0 +1,17 @@
+Recreate the exact garment from the reference image as a realistic overhead flat-lay photograph, styled like a vintage resale listing photo.
+
+**GARMENT — copy it exactly.** Same silhouette, same width-to-length ratio, same bust/waist/hem widths, same neckline shape and depth, same strap or sleeve thickness and placement, same seams, darts, panels, layers and trim, same colours and colour placement, same print, embroidery, sequin or bead placement, same fabric texture, sheen and transparency. A narrow, fitted top must stay narrow and fitted — do not widen, lengthen, symmetrise, simplify or redesign it in any way. The reference image is the single source of truth for the garment's shape and proportions.
+
+**SCENE.** The top is laid by hand on a softly crumpled off-white cotton bedsheet with natural creases, wrinkles and slight puckering across the whole frame — warm ivory-white, lived-in, never a smooth studio backdrop. The sheet fills the entire frame edge to edge.
+
+**CAMERA.** Shot directly from above at 90 degrees, vertical portrait composition, casual phone-camera look. The garment sits roughly centred and occupies about 70–80% of the frame height, with a modest margin of sheet visible on all sides. The whole garment is in focus, with minimal perspective distortion, gentle natural sharpness and a very faint photographic grain.
+
+**PLACEMENT.** Neat but clearly arranged by hand: almost symmetrical with believable imperfections — soft wrinkles, slightly uneven hem, gentle bunching along seams, small left/right differences. Thin straps or halter ties rest in relaxed, organic curves (loosely crossed or looped above the neckline), never perfectly straight or mirror-image identical.
+
+**LIGHT.** Soft, diffused daylight from a nearby window: warm-neutral, moderately bright, with delicate contact shadows directly beneath the garment and subtle micro-shadows around raised details like sequins, lace, embroidery, seams and straps.
+
+**REALISM.** The result must look like a real photo taken on a good smartphone in a naturally lit bedroom — natural fabric physics, accurate material response, subtle depth. Not an AI render: no HDR glow, no harsh sunlight, no strong yellow cast, no glossy studio lighting, no plastic-smooth fabric, no perfect symmetry.
+
+The frame contains only the garment and the bedsheet — no person, hands, mannequin, hanger, props, added tags or labels, text, watermark or border.
+
+If anything conflicts, follow this priority: (1) the garment's exact identity and true proportions, (2) its narrowness and width-to-length ratio, (3) the overhead composition and \~70–80% frame-height scale, (4) the crumpled ivory sheet and soft daylight, (5) neat-but-imperfect hand styling.
