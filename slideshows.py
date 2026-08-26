@@ -22,6 +22,12 @@ from pins import BOTTOM_CATEGORIES, TOP_CATEGORIES, PinNotFoundError, load_pin, 
 SLIDESHOW_SIZE = 3
 MAX_SLIDESHOW_SIZE = 35  # TikTok's cap on photos per carousel
 
+# What a slideshow goes out with unless the caption box is edited.
+DEFAULT_TIKTOK_CAPTION = (
+    "outfit inspiration for you "
+    "#outfitinspo #outfitsideas #boysfashion #mensoutfits #mystyle"
+)
+
 
 class SlideshowError(RuntimeError):
     pass
@@ -242,7 +248,9 @@ def slideshow_summary(show: dict) -> dict:
     return {
         "id": show["id"],
         "slides": slides,
-        "caption": show.get("caption", ""),
+        # The default is served rather than hardcoded in the page, so the box
+        # shows exactly what would go out if it isn't touched.
+        "caption": show.get("caption") or DEFAULT_TIKTOK_CAPTION,
         "postedAt": show.get("posted_at"),
         "draftedAt": show.get("drafted_at"),
         "doneAt": show.get("done_at"),

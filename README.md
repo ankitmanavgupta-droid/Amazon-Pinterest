@@ -144,6 +144,16 @@ own 1080×1920, so the upload is never scaled up or resampled.
 That's the outfit template only. A product collage stays 2:3, which is what
 Pinterest wants for a Pin.
 
+Each slideshow goes out with a default caption — `outfit inspiration for you
+#outfitinspo #outfitsideas #boysfashion #mensoutfits #mystyle` — shown in the
+box on the batch so you can edit it before sending.
+
+Pinterest copy is written per outfit by Claude, the first time that pin is
+posted rather than when it's generated, so it's only paid for on pins that
+actually go out. A wardrobe item is named after whatever file was dropped in,
+so the copywriter is given the *kinds* of piece in the look — tops, jeans,
+watches — rather than the filenames.
+
 TikTok rations direct posting, and in practice it's usually unavailable, so a
 slideshow is delivered to the account's **Creator Inbox**. Zernio reports that
 as "published" because it handed it over, but it isn't live until you open the

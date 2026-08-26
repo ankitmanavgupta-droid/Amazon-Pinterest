@@ -7,9 +7,10 @@ from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from config import GITHUB_PAGES_BASE_URL, PROJECT_ROOT, SHOP_DIR
-from pinterest.seo import format_description, pick_best_board
+from pinterest.seo import SEOGenerationError, format_description, generate_seo_content, pick_best_board
 from pins import (
-    _now, destination_link, has_landing_page, load_pin, pin_dir, save_pin, write_tiktok_frame,
+    OUTFIT_NICHE_HINT, _now, destination_link, has_landing_page, load_pin, outfit_seo_subject,
+    pin_dir, save_pin, write_tiktok_frame,
 )
 from zernio import (
     create_pin, create_tiktok_photo_post, get_connected_pinterest_accounts,
@@ -110,15 +111,32 @@ def _send_to_pinterest(slug: str, scheduled_for: str = None, tz_name: str = None
             "scheduled post, so change or delete it in their dashboard first."
         )
 
-    seo = pin.get("seo") or {}
-    description = format_description(seo) or f"{pin.get('title1', '')} {pin.get('title2', '')}".strip()
-
     accounts = get_connected_pinterest_accounts()
     if not accounts:
         raise PublishError("No Pinterest account connected in Zernio — connect one in their dashboard first.")
     account_id = accounts[0]["_id"]
 
     boards = list_boards(account_id)
+
+    # An outfit is assembled from the wardrobe rather than built from product
+    # listings, so nothing has written SEO for it yet. Do it now — at post
+    # time, so the copy is only paid for on pins that actually go out, and the
+    # model can pick from the real board list in the same call.
+    seo = pin.get("seo") or {}
+    if not seo and pin.get("template") == "outfit":
+        try:
+            seo = generate_seo_content(
+                outfit_seo_subject(pin),
+                niche_hint=OUTFIT_NICHE_HINT,
+                board_names=[board["name"] for board in boards],
+            )
+            pin["seo"] = seo
+            save_pin(pin)
+        except SEOGenerationError as e:
+            # Worth posting with a plain description rather than not at all.
+            print(f"[seo] {slug}: {e}")
+
+    description = format_description(seo) or f"{pin.get('title1', '')} {pin.get('title2', '')}".strip()
     board_id = pick_best_board(f"{seo.get('title', '')} {description}", boards, preferred_name=seo.get("board"))
     if not board_id:
         raise PublishError("That Pinterest account has no boards to pin to.")
@@ -189,11 +207,7 @@ def post_slideshow(
 
     caption = (caption if caption is not None else show.get("caption", "")).strip()
     if not caption:
-        # Fall back to whatever SEO the first slide already carries, so a
-        # slideshow is never posted with an empty caption.
-        first = load_pin(summary["slides"][0]["slug"])
-        seo = first.get("seo") or {}
-        caption = format_description(seo) or "Outfit ideas"
+        caption = slideshows.DEFAULT_TIKTOK_CAPTION
 
     # Upload the 9:16 re-frame, not the 2:3 pin — TikTok pads anything squarer
     # with blurred fill, and the pin itself has to stay 2:3 for Pinterest.

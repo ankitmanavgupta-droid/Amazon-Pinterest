@@ -707,6 +707,28 @@ def _fit_rect_to_image(rect: dict, image_path: Path) -> dict:
     }
 
 
+# What the SEO copywriter is told an outfit pin is about.
+OUTFIT_NICHE_HINT = "men's outfit flat lay — a full look styled from separate pieces"
+
+
+def outfit_seo_subject(pin: dict) -> list:
+    """The garment kinds an outfit is made of, for the SEO copywriter.
+
+    A wardrobe item's title is whatever its file was called — hashes and
+    'Screenshot 2026-08-25 at 18.11.46' — so the products themselves say
+    nothing useful. Which *kinds* of piece the look contains does, and that's
+    what the section labels carry.
+    """
+    labels = {section["id"]: section["label"] for section in outfit_sections(pin)}
+    subject = []
+    for product in pin.get("products", []):
+        category = product.get("category", "")
+        label = (labels.get(category) or category).strip()
+        if label and label.lower() not in {seen.lower() for seen in subject}:
+            subject.append(label)
+    return subject
+
+
 def create_outfit_pin_from_items(
     title1: str, title2: str, items: list, sections: list, generated_from: dict = None,
 ) -> dict:

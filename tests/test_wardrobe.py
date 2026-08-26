@@ -408,3 +408,27 @@ def test_no_two_pieces_overlap_in_a_full_wardrobe():
         if _overlaps(rects[i], rects[j])
     ]
     assert clashes == []
+
+
+def test_outfit_seo_subject_uses_section_labels_not_file_names(wardrobe_dir, posts_dir, monkeypatch):
+    """Wardrobe items are named after whatever file was dropped in — hashes and
+    screenshot names — so the SEO copy has to be told what kinds of piece the
+    look is made of instead."""
+    monkeypatch.setattr("amazon.background_removal.remove_background", lambda data: data)
+    wardrobe.add_wardrobe_item("tops", b"a", "1bafedbde6edc00c3c47d8562583fa99.png")
+    wardrobe.add_wardrobe_item("jeans", b"b", "Screenshot 2026-08-25 at 18.11.46.png")
+
+    [pin] = wardrobe.generate_outfit_batch("Outfit", "", combine=[], random_spec={"tops": 1, "jeans": 1})
+
+    assert sorted(pins.outfit_seo_subject(pin)) == ["Jeans", "Tops"]
+
+
+def test_outfit_seo_subject_lists_each_kind_once(wardrobe_dir, posts_dir, monkeypatch):
+    monkeypatch.setattr("amazon.background_removal.remove_background", lambda data: data)
+    for name in ("a", "b"):
+        wardrobe.add_wardrobe_item("tops", name.encode(), f"{name}.png")
+
+    [pin] = wardrobe.generate_outfit_batch("Outfit", "", combine=[], random_spec={"tops": 2})
+
+    assert len(pin["products"]) == 2
+    assert pins.outfit_seo_subject(pin) == ["Tops"]

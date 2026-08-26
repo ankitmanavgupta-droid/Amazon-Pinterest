@@ -266,3 +266,16 @@ def test_a_drafted_slideshow_is_not_offered_for_sending_again(slideshow_file, po
 
     assert summary["ready"] is False
     assert summary["draftedAt"]
+
+
+def test_a_slideshow_offers_the_default_caption_until_one_is_written(slideshow_file, posts_dir):
+    for slug, top in [("a", "tee"), ("b", "shirt")]:
+        pins.save_pin(outfit(slug, top, "jeans"))
+    slideshows.create_batches_for(["a", "b"])
+    show = slideshows.load_slideshows()["slideshows"][0]
+
+    assert slideshows.list_slideshows()[0]["caption"] == slideshows.DEFAULT_TIKTOK_CAPTION
+    assert "#outfitinspo" in slideshows.DEFAULT_TIKTOK_CAPTION
+
+    slideshows.update_slideshow(show["id"], caption="my own words")
+    assert slideshows.list_slideshows()[0]["caption"] == "my own words"
