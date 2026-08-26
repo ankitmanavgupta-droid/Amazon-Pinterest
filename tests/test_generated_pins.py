@@ -298,3 +298,61 @@ def test_run_drip_schedule_catches_up_a_stale_pointer_instead_of_scheduling_in_t
 
     scheduled_dt = datetime.fromisoformat(sent["when"])
     assert scheduled_dt > datetime.now()
+
+
+# ---------- A slot that has already gone by ----------
+
+def _drip(dirs, next_slot, interval_hours=0.5, enabled=True):
+    generated_pins._save_drip({
+        "enabled": enabled, "interval_hours": interval_hours,
+        "next_slot": next_slot, "timezone": "Europe/London",
+    })
+
+
+def test_a_lapsed_slot_rolls_forward_to_the_next_one_still_coming(dirs):
+    """Slots tick by unused whenever nothing is waiting, so the stored time
+    drifts into the past — the panel was reporting a slot from that morning."""
+    london = ZoneInfo("Europe/London")
+    now = datetime.now(london)
+    ten_hours_ago = (now - timedelta(hours=10)).replace(microsecond=0)
+    _drip(dirs, ten_hours_ago.isoformat(timespec="seconds"))
+
+    slot = datetime.fromisoformat(generated_pins.drip_status()["next_slot"])
+
+    assert slot > now
+    assert slot - now <= timedelta(hours=0.5)
+    # and stays on the cadence it was set to, rather than resetting to now+interval
+    assert (slot - ten_hours_ago) % timedelta(hours=0.5) == timedelta(0)
+
+
+def test_rolling_forward_is_written_back_not_just_reported(dirs):
+    past = (datetime.now(ZoneInfo("Europe/London")) - timedelta(hours=3)).replace(microsecond=0)
+    _drip(dirs, past.isoformat(timespec="seconds"))
+
+    reported = generated_pins.drip_status()["next_slot"]
+
+    assert generated_pins._load_drip()["next_slot"] == reported
+
+
+def test_a_slot_still_in_the_future_is_left_alone(dirs):
+    ahead = (datetime.now(ZoneInfo("Europe/London")) + timedelta(hours=2)).replace(microsecond=0)
+    _drip(dirs, ahead.isoformat(timespec="seconds"))
+
+    assert generated_pins.drip_status()["next_slot"] == ahead.isoformat(timespec="seconds")
+
+
+def test_an_empty_queue_still_moves_the_slot_on(dirs):
+    """It used to return before the catch-up, so with nothing published the
+    stored slot fell further behind on every poll."""
+    past = (datetime.now(ZoneInfo("Europe/London")) - timedelta(hours=6)).replace(microsecond=0)
+    _drip(dirs, past.isoformat(timespec="seconds"))
+
+    assert generated_pins.run_drip_schedule() == []
+    assert datetime.fromisoformat(generated_pins._load_drip()["next_slot"]) > datetime.now(ZoneInfo("Europe/London"))
+
+
+def test_a_disabled_feed_is_not_rolled_forward(dirs):
+    past = (datetime.now(ZoneInfo("Europe/London")) - timedelta(hours=6)).replace(microsecond=0)
+    _drip(dirs, past.isoformat(timespec="seconds"), enabled=False)
+
+    assert generated_pins.drip_status()["next_slot"] == past.isoformat(timespec="seconds")

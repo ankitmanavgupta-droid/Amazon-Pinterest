@@ -17,6 +17,7 @@ run_drip_schedule()
 """
 
 import json
+import math
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -156,7 +157,9 @@ def _save_drip(config: dict):
 
 
 def drip_status() -> dict:
-    return _load_drip()
+    """Rolls a lapsed slot forward before reporting, so the panel never shows
+    a time that has already been and gone."""
+    return _roll_forward(_load_drip())
 
 
 def enable_drip(interval_hours: float, start_at: str = None, tz_name: str = None) -> dict:
@@ -196,6 +199,38 @@ def _advance(next_slot: str, interval_hours: float) -> str:
     return (datetime.fromisoformat(next_slot) + timedelta(hours=interval_hours)).isoformat(timespec="seconds")
 
 
+def _roll_forward(config: dict) -> dict:
+    """Moves a slot that has already gone by up to the next one still coming.
+
+    Slots tick past unused whenever nothing is waiting — an empty queue, or
+    the machine asleep — and the stored time drifts further behind with every
+    one. Left alone the status panel reports a slot from this morning, and
+    Zernio would be handed a time in the past.
+
+    It steps on the original cadence rather than resetting to now + interval,
+    so a feed set to the half hour stays on the half hour.
+    """
+    slot_text = config.get("next_slot")
+    interval_hours = config.get("interval_hours") or 0
+    if not config.get("enabled") or not slot_text or interval_hours <= 0:
+        return config
+
+    slot = datetime.fromisoformat(slot_text)
+    now = datetime.now(slot.tzinfo)
+    if slot > now:
+        return config
+
+    interval = timedelta(hours=interval_hours)
+    missed = math.floor((now - slot) / interval) + 1
+    slot += missed * interval
+    if slot <= now:  # exactly on a boundary
+        slot += interval
+
+    config["next_slot"] = slot.isoformat(timespec="seconds")
+    _save_drip(config)
+    return config
+
+
 def ready_queue() -> list:
     """Pins published but not yet scheduled or posted, oldest first — the
     drip feed's source, whatever template they are."""
@@ -220,17 +255,13 @@ def run_drip_schedule(progress=None) -> list:
     if not config.get("enabled"):
         return []
 
+    # Roll a lapsed slot forward first, and unconditionally: doing it only when
+    # something was waiting left the stored time drifting into the past.
+    config = _roll_forward(config)
+
     ready = ready_queue()
     if not ready:
         return []
-
-    next_slot_dt = datetime.fromisoformat(config["next_slot"])
-    now = datetime.now(next_slot_dt.tzinfo)
-    if next_slot_dt <= now:
-        # Nothing was ready to fill the earlier slots (or the machine was
-        # asleep) — catch up from now rather than handing Zernio a past time.
-        next_slot_dt = now + timedelta(hours=config["interval_hours"])
-        config["next_slot"] = next_slot_dt.isoformat(timespec="seconds")
 
     scheduled = []
     for pin in ready:
