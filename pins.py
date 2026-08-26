@@ -512,11 +512,12 @@ BOTTOM_CATEGORIES = {"jeans"}
 # whether there are three of them or six.
 RIGHT_COLUMN = (
     ("headphones", 0.202, 1.0),
-    ("glasses", 0.076, 0.95),
+    ("glasses", 0.072, 0.95),
     ("belts", 0.072, 0.80),
     (("fragrance", "watches"), 0.144, 1.0),
-    ("rings", 0.063, 0.9),
-    ("shoes", 0.169, 1.0),
+    ("rings", 0.05, 0.9),
+    ("accessories", 0.05, 0.9),
+    ("shoes", 0.20, 1.0),
 )
 
 # Sections get named freely, and "+ Section" suffixes an id it has seen before
@@ -582,7 +583,7 @@ def _arrange_wardrobe_layout(categories: list) -> list:
     )
     # Anything unrecognised goes above the shoes, which stay the last row.
     for key in leftover:
-        rows.insert(max(0, len(rows) - 1), ([key], 0.10, 0.9))
+        rows.insert(max(0, len(rows) - 1), ([key], 0.05, 0.9))
 
     if rows:
         available = LAYOUT_BOTTOM_MARGIN - LAYOUT_TOP_MARGIN

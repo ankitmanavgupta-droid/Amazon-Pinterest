@@ -344,3 +344,24 @@ def test_the_last_section_cannot_be_deleted(wardrobe_dir):
 def test_deleting_a_section_into_itself_is_rejected(wardrobe_dir):
     with pytest.raises(ValueError, match="can't be moved into"):
         wardrobe.delete_wardrobe_section("belts", move_items_to="belts")
+
+
+def test_accessory_row_heights_match_what_was_asked_for():
+    """These are tuned by eye against the reference flat-lays, so pin them —
+    a stray edit to one row silently reshapes every generated outfit."""
+    categories = ["tops", "jeans", "headphones", "glasses", "belts", "fragrance", "watches", "accessories", "shoes"]
+    rects = dict(zip(categories, pins._arrange_wardrobe_layout(categories)))
+
+    def percent(category):
+        return rects[category]["h"] / pins.CANVAS_H * 100
+
+    assert percent("glasses") == pytest.approx(7.2, abs=0.05)
+    assert percent("belts") == pytest.approx(7.2, abs=0.05)
+    assert percent("accessories") == pytest.approx(5.0, abs=0.05)
+    assert percent("shoes") == pytest.approx(20.0, abs=0.05)
+
+
+def test_an_unnamed_section_gets_the_small_accessory_height():
+    rects = dict(zip(["tops", "cufflinks"], pins._arrange_wardrobe_layout(["tops", "cufflinks"])))
+
+    assert rects["cufflinks"]["h"] / pins.CANVAS_H * 100 == pytest.approx(5.0, abs=0.05)

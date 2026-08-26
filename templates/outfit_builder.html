@@ -632,11 +632,12 @@ const BOTTOM_CATEGORIES = ['jeans'];
 // [categories, height as a fraction of the frame, width as a fraction of the column]
 const RIGHT_COLUMN = [
   [['headphones'], 0.202, 1.0],
-  [['glasses'], 0.076, 0.95],
+  [['glasses'], 0.072, 0.95],
   [['belts'], 0.072, 0.80],
   [['fragrance', 'watches'], 0.144, 1.0],
-  [['rings'], 0.063, 0.9],
-  [['shoes'], 0.169, 1.0],
+  [['rings'], 0.05, 0.9],
+  [['accessories'], 0.05, 0.9],
+  [['shoes'], 0.20, 1.0],
 ];
 const SLOT_ALIASES = {
   top: 'tops', tshirts: 'tops', tees: 'tops', shirts: 'tops',
@@ -680,7 +681,7 @@ function computeArrangement(categories) {
   Object.keys(byKey)
     .filter(key => !TOP_CATEGORIES.includes(key) && !BOTTOM_CATEGORIES.includes(key) && !claimed.has(key))
     .sort()
-    .forEach(key => rows.splice(Math.max(0, rows.length - 1), 0, [[key], 0.10, 0.9]));
+    .forEach(key => rows.splice(Math.max(0, rows.length - 1), 0, [[key], 0.05, 0.9]));
 
   if (rows.length) {
     const available = LAYOUT_BOTTOM_MARGIN - LAYOUT_TOP_MARGIN;
