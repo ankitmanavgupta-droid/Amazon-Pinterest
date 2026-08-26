@@ -481,16 +481,24 @@ def add_outfit_remote_asset(slug: str, category: str, image_url: str) -> dict:
 # one row. Positions stay fully draggable/resizable in the editor afterwards.
 # Mirrored in templates/outfit_builder.html's computeArrangement, for the
 # "Arrange outfit" button and for items added by hand.
-CANVAS_W, CANVAS_H = 500, 750
-LAYOUT_TOP_MARGIN, LAYOUT_BOTTOM_MARGIN = 70, 720  # clear of the border and brand mark
+# The canvas is 9:16 — TikTok's full-screen carousel shape — so a slideshow
+# fills the phone edge to edge with nothing added around it. 540x960 doubles
+# to exactly TikTok's 1080x1920, so the export never resamples.
+CANVAS_W, CANVAS_H = 540, 960
+LAYOUT_TOP_MARGIN, LAYOUT_BOTTOM_MARGIN = 38, 938
 
-LEFT_ZONE_X, LEFT_ZONE_W = 18, 275          # ~55% of the frame, vs ~40% before
-LEFT_TOP_SLOT = {"x": LEFT_ZONE_X, "y": 70, "w": LEFT_ZONE_W, "h": 245}
-LEFT_BOTTOM_SLOT = {"x": 30, "y": 325, "w": 250, "h": 390}
+# The garments run nearly the full height of the frame — top and jeans stacked
+# with barely a gap — which is what makes the flat-lay read as an outfit rather
+# than a product grid.
+LEFT_ZONE_X, LEFT_ZONE_W = 11, 324          # 60% of the frame
+LEFT_TOP_SLOT = {"x": LEFT_ZONE_X, "y": 38, "w": LEFT_ZONE_W, "h": 345}
+LEFT_BOTTOM_SLOT = {"x": 24, "y": 390, "w": 294, "h": 548}
 
-RIGHT_ZONE_X, RIGHT_ZONE_W = 308, 177
-RIGHT_ROW_GAP = 12
-PAIR_GAP = 12
+# The accessories are deliberately small beside them, and spaced rather than
+# stretched to fill the column.
+RIGHT_ZONE_X, RIGHT_ZONE_W = 340, 173
+MAX_RIGHT_ROW_GAP = 70
+PAIR_GAP = 17
 
 # Which wardrobe categories count as the outfit's top and bottom garment. Used
 # for the layout, and by slideshows.py to keep a TikTok batch from repeating
@@ -498,14 +506,17 @@ PAIR_GAP = 12
 TOP_CATEGORIES = {"tops", "jumpers", "jackets"}
 BOTTOM_CATEGORIES = {"jeans"}
 
-# Down the right column, with how much vertical space each row takes relative
-# to the others. A tuple shares one row side by side.
+# Down the right column: (categories, height as a fraction of the frame, width
+# as a fraction of the column). A tuple shares one row side by side. These are
+# absolute sizes rather than shares of the space, so an accessory stays small
+# whether there are three of them or six.
 RIGHT_COLUMN = (
-    ("headphones", 1.15),
-    ("glasses", 0.8),
-    ("belts", 0.9),
-    (("fragrance", "watches"), 1.3),
-    ("shoes", 1.55),
+    ("headphones", 0.202, 1.0),
+    ("glasses", 0.076, 0.95),
+    ("belts", 0.072, 0.80),
+    (("fragrance", "watches"), 0.144, 1.0),
+    ("rings", 0.063, 0.9),
+    ("shoes", 0.169, 1.0),
 )
 
 # Sections get named freely, and "+ Section" suffixes an id it has seen before
@@ -557,37 +568,44 @@ def _arrange_wardrobe_layout(categories: list) -> list:
         elif key in BOTTOM_CATEGORIES:
             rects.update(_stack(indexes, LEFT_BOTTOM_SLOT))
 
-    # Right column: only the rows actually present take up space, so a look
-    # without glasses gives that height to everything else rather than gapping.
+    # Right column: only rows that are actually present take up space.
     rows = []
-    for entry, weight in RIGHT_COLUMN:
+    for entry, height_fraction, width_fraction in RIGHT_COLUMN:
         members = (entry,) if isinstance(entry, str) else entry
         present = [member for member in members if member in by_key]
         if present:
-            rows.append((present, weight))
+            rows.append((present, height_fraction, width_fraction))
     leftover = sorted(
         key for key in by_key
         if key not in TOP_CATEGORIES and key not in BOTTOM_CATEGORIES
-        and not any(key in members for members, _ in rows)
+        and not any(key in members for members, _, _ in rows)
     )
     # Anything unrecognised goes above the shoes, which stay the last row.
     for key in leftover:
-        rows.insert(max(0, len(rows) - 1), ([key], 1.0))
+        rows.insert(max(0, len(rows) - 1), ([key], 0.10, 0.9))
 
     if rows:
-        available = (LAYOUT_BOTTOM_MARGIN - LAYOUT_TOP_MARGIN) - RIGHT_ROW_GAP * (len(rows) - 1)
-        total_weight = sum(weight for _, weight in rows)
+        available = LAYOUT_BOTTOM_MARGIN - LAYOUT_TOP_MARGIN
+        heights = [height_fraction * CANVAS_H for _, height_fraction, _ in rows]
+        total = sum(heights)
+        if total > available:  # more categories than the column can hold at size
+            heights = [height * available / total for height in heights]
+            gap = 0.0
+        else:
+            gap = min((available - total) / max(1, len(rows) - 1), MAX_RIGHT_ROW_GAP)
+
         cursor = LAYOUT_TOP_MARGIN
-        for members, weight in rows:
-            height = available * weight / total_weight
-            width = (RIGHT_ZONE_W - PAIR_GAP * (len(members) - 1)) / len(members)
+        for (members, _, width_fraction), height in zip(rows, heights):
+            row_width = RIGHT_ZONE_W * width_fraction
+            row_x = RIGHT_ZONE_X + (RIGHT_ZONE_W - row_width) / 2
+            width = (row_width - PAIR_GAP * (len(members) - 1)) / len(members)
             for position, key in enumerate(members):
                 slot = {
-                    "x": RIGHT_ZONE_X + position * (width + PAIR_GAP),
+                    "x": row_x + position * (width + PAIR_GAP),
                     "y": cursor, "w": width, "h": height,
                 }
                 rects.update(_stack(by_key[key], slot))
-            cursor += height + RIGHT_ROW_GAP
+            cursor += height + gap
 
     fallback = {"x": RIGHT_ZONE_X, "y": LAYOUT_TOP_MARGIN, "w": 120, "h": 120}
     return [rects.get(index, dict(fallback)) for index in range(len(categories))]
@@ -599,13 +617,13 @@ TIKTOK_FRAME = (1080, 1920)
 
 
 def write_tiktok_frame(slug: str, size: tuple = TIKTOK_FRAME) -> Path:
-    """Writes a 9:16 copy of a pin's image alongside it, for TikTok.
+    """Writes the copy of a pin's image that gets uploaded to TikTok.
 
-    The pin keeps its 2:3 shape — that's what Pinterest wants, and anything
-    taller risks being cropped in their feed. TikTok gets the same composition
-    at the same size, centred, with the extra height filled by continuing the
-    top and bottom rows of the image outwards. On these flat backgrounds that
-    is seamless, and on a gradient it carries on rather than banding.
+    The editor already composes at 9:16 and exports at exactly 1080x1920, so
+    this is normally a straight copy — the image goes up at native resolution
+    with nothing resampled and nothing added around it. It only has work to do
+    for a pin rendered at some other shape, which it fits to 9:16 by continuing
+    the top and bottom rows outwards rather than banding.
     """
     import io
 
@@ -617,6 +635,11 @@ def write_tiktok_frame(slug: str, size: tuple = TIKTOK_FRAME) -> Path:
 
     width, height = size
     image = Image.open(io.BytesIO(source_path.read_bytes())).convert("RGB")
+    if image.size == (width, height):
+        destination = pin_dir(slug) / "tiktok.png"
+        destination.write_bytes(source_path.read_bytes())
+        return destination
+
     scaled = image.resize((width, max(1, round(image.height * width / image.width))), Image.LANCZOS)
 
     if scaled.height >= height:  # already at least as tall as 9:16 — trim evenly

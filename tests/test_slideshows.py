@@ -232,3 +232,37 @@ def test_failure_reason_falls_back_through_the_other_shapes():
     assert zernio_failure({"platformResults": [{"error": "nope"}]}) == "nope"
     assert zernio_failure({"error": "All platforms failed"}) == "All platforms failed"
     assert zernio_failure({"post": {"platforms": [{"status": "success"}]}}) == ""
+
+
+def test_a_slideshow_finished_in_the_tiktok_app_leaves_the_dashboard(slideshow_file, posts_dir):
+    """Marked done, it stays on record so its outfits aren't batched again,
+    but the dashboard only lists what's still outstanding."""
+    for slug, top in [("a", "tee"), ("b", "shirt")]:
+        pins.save_pin(outfit(slug, top, "jeans"))
+        (posts_dir / slug / "pin.png").write_bytes(b"rendered")
+    slideshows.create_batches_for(["a", "b"])
+    show = slideshows.load_slideshows()["slideshows"][0]
+
+    assert len(slideshows.list_slideshows()) == 1
+    slideshows.update_slideshow(show["id"], done_at="2026-08-26T10:00:00+00:00")
+
+    assert slideshows.list_slideshows() == []
+    assert len(slideshows.list_slideshows(include_done=True)) == 1
+    # still on record, so re-batching those pins is a no-op
+    assert slideshows.create_batches_for(["a", "b"]) == []
+
+
+def test_a_drafted_slideshow_is_not_offered_for_sending_again(slideshow_file, posts_dir):
+    for slug, top in [("a", "tee"), ("b", "shirt")]:
+        pins.save_pin(outfit(slug, top, "jeans"))
+        (posts_dir / slug / "pin.png").write_bytes(b"rendered")
+    slideshows.create_batches_for(["a", "b"])
+    show = slideshows.load_slideshows()["slideshows"][0]
+
+    assert slideshows.list_slideshows()[0]["ready"] is True
+
+    slideshows.update_slideshow(show["id"], drafted_at="2026-08-26T10:00:00+00:00")
+    summary = slideshows.list_slideshows()[0]
+
+    assert summary["ready"] is False
+    assert summary["draftedAt"]

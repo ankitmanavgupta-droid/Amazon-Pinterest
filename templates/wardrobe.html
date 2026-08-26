@@ -188,6 +188,9 @@ let items = [];
 let recipes = [];
 let filter = null;
 let showArchived = false;
+// Matches the editor's 9:16 stage — 540x960 doubles to TikTok's 1080x1920.
+const CANVAS_W = 540, CANVAS_H = 960, EXPORT_SCALE = 2;
+
 let previewPins = [];
 let slideshowGroups = [];
 
@@ -728,7 +731,7 @@ function drawPreviewBackground(ctx, width, height, backgroundChoice) {
 }
 
 async function renderCard(pin, canvas) {
-  const scale = canvas.width / 500;
+  const scale = canvas.width / CANVAS_W;
   const ctx = canvas.getContext('2d');
   drawPreviewBackground(ctx, canvas.width, canvas.height, pin.layout?.backgroundChoice);
   const byId = Object.fromEntries(pin.products.map(product => [product.id, product]));
@@ -762,7 +765,7 @@ function cardMarkup(pin, saved, position) {
   return `
     <div class="card ${saved ? 'saved' : ''}" data-slug="${pin.slug}" draggable="true">
       <span class="slide-number">${position}</span>
-      <canvas width="240" height="360"></canvas>
+      <canvas width="234" height="416"></canvas>
       <div class="card-body">
         <p class="card-title" title="${escapeHtml(names)}">${escapeHtml(names)}</p>
         <div class="card-actions">
@@ -777,16 +780,18 @@ function cardMarkup(pin, saved, position) {
 
 function renderPreview() {
   const byslug = Object.fromEntries(previewPins.map(pin => [pin.slug, pin]));
-  // Anything still to go out comes first; already-posted batches sink below.
+  // Not yet sent comes first; ones already sitting in TikTok's drafts sink below.
   const ordered = [...slideshowGroups]
     .filter(show => show.slides.length)
-    .sort((left, right) => Number(!!left.postedAt) - Number(!!right.postedAt));
+    .sort((left, right) => Number(!!(left.draftedAt || left.postedAt)) - Number(!!(right.draftedAt || right.postedAt)));
   $('previewSection').style.display = ordered.length ? '' : 'none';
 
-  const waiting = ordered.filter(show => !show.postedAt).length;
-  $('previewCount').textContent = waiting
-    ? `${waiting} slideshow${waiting === 1 ? '' : 's'} still to post`
-    : 'All slideshows posted.';
+  const waiting = ordered.filter(show => !show.draftedAt && !show.postedAt).length;
+  const inDrafts = ordered.length - waiting;
+  $('previewCount').textContent = [
+    waiting ? `${waiting} slideshow${waiting === 1 ? '' : 's'} to send` : '',
+    inDrafts ? `${inDrafts} waiting in your TikTok drafts` : '',
+  ].filter(Boolean).join(' · ') || 'Nothing outstanding.';
 
   $('previewGrid').innerHTML = ordered.map((show, index) => {
     const slides = show.slides.map(slide => byslug[slide.slug]).filter(Boolean);
@@ -799,17 +804,17 @@ function renderPreview() {
       <div class="batch-head">
         <p class="batch-name">Slideshow ${index + 1}<small>${slides.length} slide${slides.length === 1 ? '' : 's'}</small></p>
         <div class="batch-actions">
-          ${done ? '' : `
-            <button class="button secondary small" data-batch-action="draft" ${show.ready ? '' : 'disabled'} title="Send to your TikTok drafts to finish in the app">Send to drafts</button>
-            <button class="button primary small" data-batch-action="post" ${show.ready ? '' : 'disabled'} title="${show.ready ? 'Post these slides to TikTok' : 'Save every slide first'}">Post to TikTok</button>`}
+          ${drafted
+            ? '<button class="button primary small" data-batch-action="done">Added to drafts — clear it</button>'
+            : (posted ? '' : `<button class="button primary small" data-batch-action="draft" ${show.ready ? '' : 'disabled'} title="${show.ready ? 'Send to your TikTok drafts to finish in the app' : 'Save every slide first'}">Send to TikTok drafts</button>`)}
         </div>
       </div>
       ${show.warnings.map(warning => `<p class="batch-warning">${escapeHtml(warning)}</p>`).join('')}
       ${posted ? `<p class="batch-posted">Posted to TikTok${show.tiktokUrl ? ` — <a href="${escapeHtml(show.tiktokUrl)}" target="_blank" rel="noopener">view</a>` : ''}</p>` : ''}
-      ${drafted ? `<p class="batch-warning">Sent to TikTok's Creator Inbox, not your profile — open the TikTok app,
-        go to the <strong>Inbox / notifications</strong> tab, and tap the notification about uploaded content to
-        finish posting. Zernio will call this "published" because it delivered it; it isn't live until you post it there.
-        <button class="button secondary small" data-batch-action="undraft" style="margin-top:8px">Didn't arrive — let me try posting directly</button></p>` : ''}
+      ${drafted ? `<p class="batch-warning">In your TikTok drafts. Open the TikTok app, go to the
+        <strong>Inbox / notifications</strong> tab and tap the notification about uploaded content to post it.
+        Once it's up, clear it from here.
+        <button class="button secondary small" data-batch-action="undraft" style="margin-top:8px">Didn't arrive — send again</button></p>` : ''}
       ${done ? '' : `<input class="batch-caption" type="text" placeholder="Caption for this slideshow…" value="${escapeHtml(show.caption || '')}">`}
       <div class="grid">${slides.map((pin, position) => cardMarkup(pin, !show.unrendered.includes(pin.slug), position + 1)).join('')}</div>
     </div>`;
@@ -937,7 +942,15 @@ $('previewGrid').addEventListener('click', async event => {
   const batch = button.closest('.batch');
   const id = batch.dataset.id;
   const caption = batch.querySelector('.batch-caption')?.value || '';
-  // Clearing the draft mark makes the batch postable again — for when the
+  // Finished off in the TikTok app: keep the record so these outfits aren't
+  // batched again, but take it off the dashboard.
+  if (button.dataset.batchAction === 'done') {
+    await fetch(`/api/slideshows/${batch.dataset.id}/done`, { method: 'POST' });
+    await syncPreview();
+    return;
+  }
+
+  // Clearing the draft mark makes the batch sendable again — for when the
   // Creator Inbox delivery never showed up, or was discarded in the app.
   if (button.dataset.batchAction === 'undraft') {
     if (!confirm('Mark this slideshow as not sent, so it can be posted again?\n\n'
@@ -948,26 +961,21 @@ $('previewGrid').addEventListener('click', async event => {
     return;
   }
 
-  const asDraft = button.dataset.batchAction === 'draft';
   const label = button.textContent;
-  if (!confirm(asDraft
-    ? 'Send these slides to your TikTok drafts to finish in the app?'
-    : 'Post these slides to TikTok as one slideshow?')) return;
+  if (!confirm('Send these slides to your TikTok drafts to finish in the app?')) return;
 
   button.disabled = true;
-  button.textContent = asDraft ? 'Sending…' : 'Posting…';
+  button.textContent = 'Sending…';
   try {
     const response = await fetch(`/api/slideshows/${id}/post`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ caption, draft: asDraft }),
+      body: JSON.stringify({ caption, draft: true }),
     });
     const body = await response.json();
-    if (!response.ok) throw new Error(body.error || 'Post failed');
+    if (!response.ok) throw new Error(body.error || 'Send failed');
     await syncPreview();
-    if (body.draftedAt && !body.tiktokUrl) {
-      $('generateStatus').textContent =
-        'TikTok direct posting was unavailable, so the slideshow went to your TikTok drafts — open the app to publish it.';
-    }
+    $('generateStatus').textContent =
+      'Sent to your TikTok drafts — open the app to post it, then clear it from here.';
   } catch (error) {
     alert(error.message);
     button.disabled = false;
@@ -1041,10 +1049,11 @@ async function savePinCard(pin, card) {
   // the copy held here, or saving would undo those adjustments.
   const fresh = (await refreshPin(pin.slug)) || pin;
   const canvas = document.createElement('canvas');
-  canvas.width = 1000; canvas.height = 1500;
+  canvas.width = CANVAS_W * EXPORT_SCALE; canvas.height = CANVAS_H * EXPORT_SCALE;
   await renderCard(fresh, canvas);
   const hotspots = (fresh.layout?.layers || []).filter(layer => layer.url).map(layer => ({
-    leftPct: layer.x / 5, topPct: layer.y / 7.5, widthPct: layer.w / 5, heightPct: layer.h / 7.5,
+    leftPct: layer.x / CANVAS_W * 100, topPct: layer.y / CANVAS_H * 100,
+    widthPct: layer.w / CANVAS_W * 100, heightPct: layer.h / CANVAS_H * 100,
     url: layer.url, regionalUrls: layer.regionalUrls,
   }));
   const response = await fetch(`/api/pins/${fresh.slug}/save`, {

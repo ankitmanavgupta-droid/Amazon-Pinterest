@@ -126,6 +126,7 @@ def _new_slideshow(slugs: list) -> dict:
         "created_at": _now(),
         "posted_at": None,
         "drafted_at": None,
+        "done_at": None,
         "tiktok_url": None,
     }
 
@@ -244,12 +245,19 @@ def slideshow_summary(show: dict) -> dict:
         "caption": show.get("caption", ""),
         "postedAt": show.get("posted_at"),
         "draftedAt": show.get("drafted_at"),
+        "doneAt": show.get("done_at"),
         "tiktokUrl": show.get("tiktok_url"),
         "warnings": batch_warnings(pins),
         "unrendered": unrendered,
-        "ready": bool(slides) and not unrendered and not show.get("posted_at") and not show.get("drafted_at"),
+        "ready": bool(slides) and not unrendered and not show.get("drafted_at") and not show.get("done_at"),
     }
 
 
-def list_slideshows() -> list:
-    return [slideshow_summary(show) for show in prune_missing_pins()["slideshows"]]
+def list_slideshows(include_done: bool = False) -> list:
+    """The dashboard only wants outstanding work, so a slideshow that's been
+    posted from the TikTok app is kept on record — which stops its outfits
+    being batched again — but dropped from the list."""
+    shows = prune_missing_pins()["slideshows"]
+    if not include_done:
+        shows = [show for show in shows if not show.get("done_at")]
+    return [slideshow_summary(show) for show in shows]

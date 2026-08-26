@@ -439,6 +439,17 @@ def api_delete_slideshow(slideshow_id):
     return jsonify({"ok": True})
 
 
+@app.post("/api/slideshows/<slideshow_id>/done")
+def api_complete_slideshow(slideshow_id):
+    """Marks a slideshow as finished off in the TikTok app, which takes it off
+    the dashboard. The record stays so its outfits aren't batched again."""
+    try:
+        slideshows.update_slideshow(slideshow_id, done_at=slideshows._now())
+    except slideshows.SlideshowError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"ok": True})
+
+
 @app.post("/api/slideshows/<slideshow_id>/undraft")
 def api_undraft_slideshow(slideshow_id):
     """Clears the 'sent to TikTok drafts' mark so the batch can be posted

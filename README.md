@@ -136,18 +136,20 @@ the slideshow is an additional destination, not a replacement.
 Posting to TikTok goes through Zernio like Pinterest does, so connect a TikTok
 account in their dashboard first.
 
-Pins are 2:3, which is the ratio Pinterest wants — taller ones risk being
-cropped in their feed. TikTok's carousel is full-screen 9:16 and pads anything
-squarer with blurred fill, so each slide is re-framed to 1080×1920 on the way
-out (`posts/<slug>/tiktok.png`): same composition at the same size, centred,
-with the background continued into the extra height. Flat backgrounds extend
-seamlessly, so there are no bars.
+Outfits are composed at **9:16** (540×960 in the editor, exported at 1080×1920)
+— TikTok's full-screen shape, so a slide fills the phone edge to edge with no
+border and nothing added around it. Doubling 540×960 lands exactly on TikTok's
+own 1080×1920, so the upload is never scaled up or resampled.
 
-TikTok rations direct posting. When that capacity runs out, the slideshow is
-delivered to the account's **Creator Inbox** instead — Zernio reports that as
-"published" because it handed it over, but it isn't live until you open the
-TikTok app, go to the notifications tab and finish the post. Batches in that
-state say so, and can be reset if the draft never turns up.
+That's the outfit template only. A product collage stays 2:3, which is what
+Pinterest wants for a Pin.
+
+TikTok rations direct posting, and in practice it's usually unavailable, so a
+slideshow is delivered to the account's **Creator Inbox**. Zernio reports that
+as "published" because it handed it over, but it isn't live until you open the
+TikTok app, go to the notifications tab and finish the post. Once it's up,
+clear the batch from the wardrobe and it drops off the list — the record is
+kept so those outfits aren't batched again.
 
 ## Posting on an interval instead of one at a time
 
@@ -198,8 +200,8 @@ posts/<slug>/
   pin.json          titles, products, affiliate links, layout, SEO, status
   raw/productN.jpg  original product photo
   cutout/productN.png  background removed, cropped tight
-  pin.png           the rendered pin image (2:3, what Pinterest gets)
-  tiktok.png        the same image re-framed to 9:16 for a slideshow
+  pin.png           the rendered pin image (9:16 for outfits, 2:3 for collages)
+  tiktok.png        the copy uploaded to TikTok, always 1080x1920
 docs/shop/<slug>.html   the published landing page (+ its .png)
 ```
 

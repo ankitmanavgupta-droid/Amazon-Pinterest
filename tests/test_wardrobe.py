@@ -153,14 +153,33 @@ def test_layout_matches_a_renamed_or_duplicated_section_to_its_slot():
     assert suffixed == plain
 
 
-def test_layout_closes_up_when_a_row_is_absent():
-    """Without glasses that height goes to the other rows rather than gapping."""
-    with_glasses = dict(zip(
+def test_accessories_keep_their_size_however_many_there_are():
+    """They used to share out the column, so a look with fewer accessories blew
+    them up to fill it. Sizes are absolute now and the slack becomes spacing."""
+    many = dict(zip(
         ["glasses", "belts", "shoes"], pins._arrange_wardrobe_layout(["glasses", "belts", "shoes"])))
-    without = dict(zip(["belts", "shoes"], pins._arrange_wardrobe_layout(["belts", "shoes"])))
+    few = dict(zip(["belts", "shoes"], pins._arrange_wardrobe_layout(["belts", "shoes"])))
 
-    assert without["belts"]["h"] > with_glasses["belts"]["h"]
-    assert without["shoes"]["y"] + without["shoes"]["h"] <= pins.LAYOUT_BOTTOM_MARGIN + 0.01
+    assert few["belts"]["h"] == pytest.approx(many["belts"]["h"], abs=0.01)
+    assert few["shoes"]["h"] == pytest.approx(many["shoes"]["h"], abs=0.01)
+    assert few["shoes"]["y"] + few["shoes"]["h"] <= pins.LAYOUT_BOTTOM_MARGIN + 0.01
+
+
+def test_the_garments_fill_almost_the_whole_height():
+    top, jeans = pins._arrange_wardrobe_layout(["tops", "jeans"])
+    span = (jeans["y"] + jeans["h"]) - top["y"]
+
+    assert span / pins.CANVAS_H > 0.9, "top and jeans should run nearly the full frame"
+    assert jeans["y"] - (top["y"] + top["h"]) < 20, "and sit close together, not spread apart"
+
+
+def test_accessories_stay_much_smaller_than_the_garments():
+    categories = ["tops", "jeans", "headphones", "belts", "shoes"]
+    rects = dict(zip(categories, pins._arrange_wardrobe_layout(categories)))
+
+    biggest_accessory = max(rects[c]["w"] for c in ("headphones", "belts", "shoes"))
+    assert biggest_accessory < rects["tops"]["w"] * 0.6
+    assert rects["belts"]["h"] < rects["headphones"]["h"], "the belt is the slimmest row"
 
 
 def test_layout_keeps_everything_inside_the_canvas():

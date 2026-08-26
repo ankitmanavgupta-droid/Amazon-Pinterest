@@ -19,7 +19,7 @@
   .app {
     --left-panel-width: 330px; --right-panel-width: 280px;
     min-width: 1024px; height: 100vh; display: grid;
-    grid-template-columns: var(--left-panel-width) 8px minmax(540px, 1fr) 8px var(--right-panel-width);
+    grid-template-columns: var(--left-panel-width) 8px minmax(600px, 1fr) 8px var(--right-panel-width);
   }
   .panel { background: var(--panel); overflow-y: auto; }
   .column-resizer { position: relative; z-index: 1200; background: #f3f0ea; cursor: col-resize; touch-action: none; }
@@ -69,9 +69,8 @@
   .empty { grid-column: 1/-1; padding: 28px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 11px; line-height: 1.5; text-align: center; }
 
   .workspace { overflow: auto; display: flex; align-items: center; justify-content: center; padding: 40px; background: radial-gradient(circle at 50% 40%, #faf9f6 0, #ece9e3 70%); }
-  #stage { position: relative; flex: 0 0 auto; width: 500px; height: 750px; overflow: hidden; background: #dce7ec; box-shadow: 0 18px 55px rgba(52,45,36,.18); }
+  #stage { position: relative; flex: 0 0 auto; width: 540px; height: 960px; overflow: hidden; background: #dce7ec; box-shadow: 0 18px 55px rgba(52,45,36,.18); }
   #stage.drop-ready { outline: 3px solid var(--accent); outline-offset: 7px; }
-  #stage::after { content: ''; position: absolute; inset: 12px; z-index: 900; border: 1px solid rgba(50,45,38,.09); pointer-events: none; }
   .stage-heading { position: absolute; top: 38px; left: 30px; right: 30px; z-index: 800; color: #332f2b; text-align: center; pointer-events: none; }
   #stageTitle1 { display: block; font: 38px/1.05 'Italiana', serif; letter-spacing: .12em; text-transform: uppercase; }
   #stageTitle2 { display: block; margin-top: -2px; font: 45px/1 'Parisienne', cursive; color: var(--accent); }
@@ -622,19 +621,22 @@ window.addEventListener('drop', event => {
 // Mirrors pins._arrange_wardrobe_layout — keep the two in step. The garments
 // own the left column at ~55% of the frame; accessories run down the right in
 // a fixed order, headphones highest and shoes last, fragrance and watch paired.
-const LAYOUT_TOP_MARGIN = 70, LAYOUT_BOTTOM_MARGIN = 720;
-const LEFT_ZONE_X = 18, LEFT_ZONE_W = 275;
-const LEFT_TOP_SLOT = { x: LEFT_ZONE_X, y: 70, w: LEFT_ZONE_W, h: 245 };
-const LEFT_BOTTOM_SLOT = { x: 30, y: 325, w: 250, h: 390 };
-const RIGHT_ZONE_X = 308, RIGHT_ZONE_W = 177, RIGHT_ROW_GAP = 12, PAIR_GAP = 12;
+const CANVAS_W = 540, CANVAS_H = 960;
+const LAYOUT_TOP_MARGIN = 38, LAYOUT_BOTTOM_MARGIN = 938;
+const LEFT_ZONE_X = 11, LEFT_ZONE_W = 324;
+const LEFT_TOP_SLOT = { x: LEFT_ZONE_X, y: 38, w: LEFT_ZONE_W, h: 345 };
+const LEFT_BOTTOM_SLOT = { x: 24, y: 390, w: 294, h: 548 };
+const RIGHT_ZONE_X = 340, RIGHT_ZONE_W = 173, MAX_RIGHT_ROW_GAP = 70, PAIR_GAP = 17;
 const TOP_CATEGORIES = ['tops', 'jumpers', 'jackets'];
 const BOTTOM_CATEGORIES = ['jeans'];
+// [categories, height as a fraction of the frame, width as a fraction of the column]
 const RIGHT_COLUMN = [
-  [['headphones'], 1.15],
-  [['glasses'], 0.8],
-  [['belts'], 0.9],
-  [['fragrance', 'watches'], 1.3],
-  [['shoes'], 1.55],
+  [['headphones'], 0.202, 1.0],
+  [['glasses'], 0.076, 0.95],
+  [['belts'], 0.072, 0.80],
+  [['fragrance', 'watches'], 0.144, 1.0],
+  [['rings'], 0.063, 0.9],
+  [['shoes'], 0.169, 1.0],
 ];
 const SLOT_ALIASES = {
   top: 'tops', tshirts: 'tops', tees: 'tops', shirts: 'tops',
@@ -670,29 +672,40 @@ function computeArrangement(categories) {
   });
 
   const rows = [];
-  RIGHT_COLUMN.forEach(([members, weight]) => {
+  RIGHT_COLUMN.forEach(([members, heightFraction, widthFraction]) => {
     const present = members.filter(member => byKey[member]);
-    if (present.length) rows.push([present, weight]);
+    if (present.length) rows.push([present, heightFraction, widthFraction]);
   });
   const claimed = new Set(rows.flatMap(([members]) => members));
   Object.keys(byKey)
     .filter(key => !TOP_CATEGORIES.includes(key) && !BOTTOM_CATEGORIES.includes(key) && !claimed.has(key))
     .sort()
-    .forEach(key => rows.splice(Math.max(0, rows.length - 1), 0, [[key], 1.0]));
+    .forEach(key => rows.splice(Math.max(0, rows.length - 1), 0, [[key], 0.10, 0.9]));
 
   if (rows.length) {
-    const available = (LAYOUT_BOTTOM_MARGIN - LAYOUT_TOP_MARGIN) - RIGHT_ROW_GAP * (rows.length - 1);
-    const totalWeight = rows.reduce((sum, [, weight]) => sum + weight, 0);
+    const available = LAYOUT_BOTTOM_MARGIN - LAYOUT_TOP_MARGIN;
+    let heights = rows.map(([, heightFraction]) => heightFraction * CANVAS_H);
+    const total = heights.reduce((sum, h) => sum + h, 0);
+    let gap;
+    if (total > available) {
+      heights = heights.map(h => h * available / total);
+      gap = 0;
+    } else {
+      gap = Math.min((available - total) / Math.max(1, rows.length - 1), MAX_RIGHT_ROW_GAP);
+    }
+
     let cursor = LAYOUT_TOP_MARGIN;
-    rows.forEach(([members, weight]) => {
-      const height = available * weight / totalWeight;
-      const width = (RIGHT_ZONE_W - PAIR_GAP * (members.length - 1)) / members.length;
+    rows.forEach(([members, , widthFraction], row) => {
+      const height = heights[row];
+      const rowWidth = RIGHT_ZONE_W * widthFraction;
+      const rowX = RIGHT_ZONE_X + (RIGHT_ZONE_W - rowWidth) / 2;
+      const width = (rowWidth - PAIR_GAP * (members.length - 1)) / members.length;
       members.forEach((key, position) => {
         place(byKey[key], {
-          x: RIGHT_ZONE_X + position * (width + PAIR_GAP), y: cursor, w: width, h: height,
+          x: rowX + position * (width + PAIR_GAP), y: cursor, w: width, h: height,
         });
       });
-      cursor += height + RIGHT_ROW_GAP;
+      cursor += height + gap;
     });
   }
 
@@ -761,8 +774,8 @@ function makeInteractive(layer, handle) {
   // measured from the old pointer position — the piece jumps.
   layer.el.addEventListener('pointermove', event => {
     if (!drag || !event.buttons) return;
-    layer.x = Math.max(-layer.w * .5, Math.min(500 - layer.w * .5, drag.x + event.clientX - drag.clientX));
-    layer.y = Math.max(110 - layer.h * .5, Math.min(750 - layer.h * .5, drag.y + event.clientY - drag.clientY));
+    layer.x = Math.max(-layer.w * .5, Math.min(CANVAS_W - layer.w * .5, drag.x + event.clientX - drag.clientX));
+    layer.y = Math.max(-layer.h * .5, Math.min(CANVAS_H - layer.h * .5, drag.y + event.clientY - drag.clientY));
     updateLayer(layer);
   });
   const endDrag = () => { drag = null; layer.el.style.cursor = 'grab'; };
@@ -908,11 +921,18 @@ function drawBackground(ctx, width, height) {
   }
 }
 
+// 540x960 x2 lands exactly on TikTok's 1080x1920, so the exported image is
+// used at its native size — nothing is scaled up on the way out.
+const EXPORT_SCALE = 2;
+
 async function renderCanvas() {
   await document.fonts.ready;
-  const scale = 2;
-  const canvas = document.createElement('canvas'); canvas.width = 500 * scale; canvas.height = 750 * scale;
+  const scale = EXPORT_SCALE;
+  const canvas = document.createElement('canvas');
+  canvas.width = CANVAS_W * scale; canvas.height = CANVAS_H * scale;
   const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   drawBackground(ctx, canvas.width, canvas.height);
   for (const layer of [...layers].sort((a, b) => a.zIndex - b.zIndex)) {
     if (!layer.img.complete) await new Promise(resolve => layer.img.addEventListener('load', resolve, { once: true }));
@@ -928,15 +948,14 @@ async function renderCanvas() {
   ctx.textAlign = 'center';
   if ($('title1').value) {
     ctx.fillStyle = '#332f2b'; ctx.font = `${38 * scale}px Italiana`;
-    ctx.fillText($('title1').value.toUpperCase(), 250 * scale, 72 * scale);
+    ctx.fillText($('title1').value.toUpperCase(), (CANVAS_W / 2) * scale, 92 * scale);
   }
   if ($('title2').value) {
     ctx.fillStyle = '#9c4c5f'; ctx.font = `${45 * scale}px Parisienne`;
-    ctx.fillText($('title2').value, 250 * scale, 111 * scale);
+    ctx.fillText($('title2').value, (CANVAS_W / 2) * scale, 142 * scale);
   }
   ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(45,42,37,.6)'; ctx.font = `700 ${9 * scale}px DM Sans`;
-  ctx.fillText('HOME STUDIO EDIT', 475 * scale, 724 * scale);
-  ctx.strokeStyle = 'rgba(50,45,38,.09)'; ctx.lineWidth = 2; ctx.strokeRect(24, 24, canvas.width - 48, canvas.height - 48);
+  ctx.fillText('HOME STUDIO EDIT', (CANVAS_W - 25) * scale, (CANVAS_H - 26) * scale);
   return canvas;
 }
 
@@ -954,7 +973,8 @@ function currentLayout() {
 
 function hotspots() {
   return layers.filter(layer => layer.url).map(layer => ({
-    leftPct: layer.x / 5, topPct: layer.y / 7.5, widthPct: layer.w / 5, heightPct: layer.h / 7.5,
+    leftPct: layer.x / CANVAS_W * 100, topPct: layer.y / CANVAS_H * 100,
+    widthPct: layer.w / CANVAS_W * 100, heightPct: layer.h / CANVAS_H * 100,
     url: layer.url, regionalUrls: layer.regionalUrls,
   }));
 }
