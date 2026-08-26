@@ -626,7 +626,7 @@ const LAYOUT_TOP_MARGIN = 38, LAYOUT_BOTTOM_MARGIN = 938;
 const LEFT_ZONE_X = 11, LEFT_ZONE_W = 324;
 const LEFT_TOP_SLOT = { x: LEFT_ZONE_X, y: 38, w: LEFT_ZONE_W, h: 345 };
 const LEFT_BOTTOM_SLOT = { x: 24, y: 390, w: 294, h: 548 };
-const RIGHT_ZONE_X = 340, RIGHT_ZONE_W = 173, MAX_RIGHT_ROW_GAP = 70, PAIR_GAP = 17;
+const RIGHT_ZONE_X = 340, RIGHT_ZONE_W = 173, MAX_RIGHT_ROW_GAP = 70, PAIR_GAP = 17, SIBLING_GAP = 8;
 const TOP_CATEGORIES = ['tops', 'jumpers', 'jackets'];
 const BOTTOM_CATEGORIES = ['jeans'];
 // [categories, height as a fraction of the frame, width as a fraction of the column]
@@ -661,15 +661,28 @@ function computeArrangement(categories) {
   keys.forEach((key, index) => (byKey[key] = byKey[key] || []).push(index));
 
   const rects = {};
-  const place = (indexes, slot) => indexes.forEach((index, position) => {
-    rects[index] = {
-      x: slot.x + position * 14, y: slot.y + position * 10, w: slot.w, h: slot.h,
-    };
-  });
+  // Several items of one category share their slot side by side; nudging them
+  // 14px apart just piled them on top of each other.
+  const place = (indexes, slot) => {
+    if (indexes.length === 1) {
+      rects[indexes[0]] = { ...slot };
+      return;
+    }
+    const gap = Math.min(SIBLING_GAP, slot.w / (indexes.length * 4));
+    const width = (slot.w - gap * (indexes.length - 1)) / indexes.length;
+    indexes.forEach((index, position) => {
+      rects[index] = { x: slot.x + position * (width + gap), y: slot.y, w: width, h: slot.h };
+    });
+  };
 
-  Object.entries(byKey).forEach(([key, indexes]) => {
-    if (TOP_CATEGORIES.includes(key)) place(indexes, LEFT_TOP_SLOT);
-    else if (BOTTOM_CATEGORIES.includes(key)) place(indexes, LEFT_BOTTOM_SLOT);
+  // A top and a jumper are both the upper garment, so categories sharing a
+  // slot are laid out together rather than landing on top of each other.
+  [[LEFT_TOP_SLOT, TOP_CATEGORIES], [LEFT_BOTTOM_SLOT, BOTTOM_CATEGORIES]].forEach(([slot, slotCategories]) => {
+    const indexes = Object.entries(byKey)
+      .filter(([key]) => slotCategories.includes(key))
+      .flatMap(([, keyIndexes]) => keyIndexes)
+      .sort((a, b) => a - b);
+    if (indexes.length) place(indexes, slot);
   });
 
   const rows = [];

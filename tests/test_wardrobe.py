@@ -365,3 +365,46 @@ def test_an_unnamed_section_gets_the_small_accessory_height():
     rects = dict(zip(["tops", "cufflinks"], pins._arrange_wardrobe_layout(["tops", "cufflinks"])))
 
     assert rects["cufflinks"]["h"] / pins.CANVAS_H * 100 == pytest.approx(5.0, abs=0.05)
+
+
+def _overlaps(a, b):
+    return not (a["x"] + a["w"] <= b["x"] + 0.01 or b["x"] + b["w"] <= a["x"] + 0.01
+                or a["y"] + a["h"] <= b["y"] + 0.01 or b["y"] + b["h"] <= a["y"] + 0.01)
+
+
+def test_several_items_of_one_category_sit_side_by_side():
+    """Three accessories used to be offset 14px from each other, which just
+    piled them up. They share the slot's width instead."""
+    categories = ["tops", "jeans", "accessories", "accessories", "accessories"]
+    rects = pins._arrange_wardrobe_layout(categories)
+    first, second, third = rects[2], rects[3], rects[4]
+
+    assert first["y"] == second["y"] == third["y"]
+    assert first["x"] + first["w"] <= second["x"] + 0.01
+    assert second["x"] + second["w"] <= third["x"] + 0.01
+    for left, right in ((first, second), (second, third), (first, third)):
+        assert not _overlaps(left, right)
+
+
+def test_categories_sharing_a_slot_do_not_land_on_each_other():
+    """A top and a jumper are both the upper garment — placed independently
+    they came out at identical coordinates."""
+    categories = ["tops", "jumpers", "jeans"]
+    top, jumper, _ = pins._arrange_wardrobe_layout(categories)
+
+    assert not _overlaps(top, jumper)
+
+
+def test_no_two_pieces_overlap_in_a_full_wardrobe():
+    categories = [
+        "tops", "jumpers", "jeans", "headphones-2", "glasses", "belts",
+        "fragrance", "watches", "accessories", "accessories", "shoes",
+    ]
+    rects = pins._arrange_wardrobe_layout(categories)
+
+    clashes = [
+        (categories[i], categories[j])
+        for i in range(len(rects)) for j in range(i + 1, len(rects))
+        if _overlaps(rects[i], rects[j])
+    ]
+    assert clashes == []

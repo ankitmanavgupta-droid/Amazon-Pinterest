@@ -498,7 +498,8 @@ LEFT_BOTTOM_SLOT = {"x": 24, "y": 390, "w": 294, "h": 548}
 # stretched to fill the column.
 RIGHT_ZONE_X, RIGHT_ZONE_W = 340, 173
 MAX_RIGHT_ROW_GAP = 70
-PAIR_GAP = 17
+PAIR_GAP = 17      # between two categories sharing a row
+SIBLING_GAP = 8    # between several items of the same category
 
 # Which wardrobe categories count as the outfit's top and bottom garment. Used
 # for the layout, and by slideshows.py to keep a TikTok batch from repeating
@@ -543,12 +544,21 @@ def slot_key(category: str) -> str:
 
 
 def _stack(indexes: list, slot: dict) -> dict:
-    """Several items in one slot fan out slightly rather than stacking exactly."""
+    """Lays several items of one category out across their slot.
+
+    They share the width side by side rather than being offset on top of each
+    other — three rings nudged 14px apart just overlap into a pile.
+    """
+    count = len(indexes)
+    if count == 1:
+        return {indexes[0]: dict(slot)}
+
+    gap = min(SIBLING_GAP, slot["w"] / (count * 4))
+    width = (slot["w"] - gap * (count - 1)) / count
     return {
         index: {
-            "x": slot["x"] + position * 14,
-            "y": slot["y"] + position * 10,
-            "w": slot["w"], "h": slot["h"],
+            "x": slot["x"] + position * (width + gap),
+            "y": slot["y"], "w": width, "h": slot["h"],
         }
         for position, index in enumerate(indexes)
     }
@@ -562,12 +572,17 @@ def _arrange_wardrobe_layout(categories: list) -> list:
     for index, key in enumerate(keys):
         by_key.setdefault(key, []).append(index)
 
+    # Several categories can share one slot — a top and a jumper are both the
+    # upper garment — so they're laid out together, or they'd be placed
+    # independently and land exactly on top of each other.
     rects = {}
-    for key, indexes in by_key.items():
-        if key in TOP_CATEGORIES:
-            rects.update(_stack(indexes, LEFT_TOP_SLOT))
-        elif key in BOTTOM_CATEGORIES:
-            rects.update(_stack(indexes, LEFT_BOTTOM_SLOT))
+    for slot, slot_categories in ((LEFT_TOP_SLOT, TOP_CATEGORIES), (LEFT_BOTTOM_SLOT, BOTTOM_CATEGORIES)):
+        indexes = sorted(
+            index for key, key_indexes in by_key.items() if key in slot_categories
+            for index in key_indexes
+        )
+        if indexes:
+            rects.update(_stack(indexes, slot))
 
     # Right column: only rows that are actually present take up space.
     rows = []
