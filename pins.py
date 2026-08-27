@@ -127,6 +127,19 @@ def has_landing_page(pin: dict) -> bool:
     return pin.get("template", "product") == "product"
 
 
+def is_ready_to_post(pin: dict) -> bool:
+    """Whether this pin can go to Pinterest as it stands.
+
+    Publishing exists to get a landing page live *before* a Pin links to it.
+    A template that has no page — an outfit, a generated image — has nothing
+    to publish, so rendering it is all it takes: saving an outfit is the
+    approval, and it joins the queue from there.
+    """
+    if not (pin_dir(pin["slug"]) / "pin.png").exists():
+        return False
+    return bool(pin.get("published_at")) if has_landing_page(pin) else True
+
+
 def destination_link(pin: dict):
     """Where this pin's Pinterest post should send people, or None if nowhere.
 

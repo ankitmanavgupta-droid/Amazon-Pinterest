@@ -103,7 +103,7 @@ def _send_to_pinterest(slug: str, scheduled_for: str = None, tz_name: str = None
 
     if not png_path.exists():
         raise PublishError(f"{slug} hasn't been rendered yet — open it in the editor and save first.")
-    if not pin.get("published_at"):
+    if has_landing_page(pin) and not pin.get("published_at"):
         raise PublishError(f"{slug} isn't published yet — publish it first so the Pin has somewhere to link to.")
     if pin.get("scheduled_for"):
         raise PublishError(

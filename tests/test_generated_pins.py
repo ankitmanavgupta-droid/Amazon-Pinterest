@@ -356,3 +356,48 @@ def test_a_disabled_feed_is_not_rolled_forward(dirs):
     _drip(dirs, past.isoformat(timespec="seconds"), enabled=False)
 
     assert generated_pins.drip_status()["next_slot"] == past.isoformat(timespec="seconds")
+
+
+def test_a_saved_outfit_joins_the_queue_without_being_published(dirs):
+    """An outfit has no landing page to publish, so requiring published_at
+    kept every saved one out of the queue and the feed had nothing to post."""
+    pins.save_pin({"slug": "outfit-1", "template": "outfit", "created_at": "2026-08-26T09:00:00+00:00"})
+    pins.pin_dir("outfit-1").mkdir(parents=True, exist_ok=True)
+    (pins.pin_dir("outfit-1") / "pin.png").write_bytes(b"rendered")
+
+    assert pins.pin_status(pins.load_pin("outfit-1")) == "rendered"
+    assert pins.is_ready_to_post(pins.load_pin("outfit-1"))
+    assert [p["slug"] for p in generated_pins.ready_queue()] == ["outfit-1"]
+
+
+def test_a_collage_still_has_to_be_published_first(dirs):
+    """Its Pin links to a landing page, so that page has to be live first."""
+    pins.save_pin({"slug": "collage-1", "template": "product", "created_at": "2026-08-26T09:00:00+00:00"})
+    pins.pin_dir("collage-1").mkdir(parents=True, exist_ok=True)
+    (pins.pin_dir("collage-1") / "pin.png").write_bytes(b"rendered")
+
+    assert not pins.is_ready_to_post(pins.load_pin("collage-1"))
+    assert generated_pins.ready_queue() == []
+
+    published = pins.load_pin("collage-1")
+    published["published_at"] = "2026-08-26T10:00:00+00:00"
+    pins.save_pin(published)
+
+    assert [p["slug"] for p in generated_pins.ready_queue()] == ["collage-1"]
+
+
+def test_an_unrendered_outfit_is_not_queued(dirs):
+    pins.save_pin({"slug": "outfit-2", "template": "outfit", "created_at": "2026-08-26T09:00:00+00:00"})
+
+    assert not pins.is_ready_to_post(pins.load_pin("outfit-2"))
+    assert generated_pins.ready_queue() == []
+
+
+def test_a_scheduled_or_posted_pin_drops_out_of_the_queue(dirs):
+    for slug, extra in (("outfit-3", {"scheduled_for": "2026-08-27T09:00:00+01:00"}),
+                        ("outfit-4", {"posted_at": "2026-08-26T10:00:00+00:00"})):
+        pins.save_pin({"slug": slug, "template": "outfit", "created_at": "2026-08-26T09:00:00+00:00", **extra})
+        pins.pin_dir(slug).mkdir(parents=True, exist_ok=True)
+        (pins.pin_dir(slug) / "pin.png").write_bytes(b"rendered")
+
+    assert generated_pins.ready_queue() == []

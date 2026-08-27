@@ -27,7 +27,9 @@ from config import (
     DRIP_SCHEDULE_FILE, FAILED_INPUTS_DIR, GENERATED_IMAGES_DIR,
     IMAGEGEN_STATE_FILE, INCOMING_CLOTHES_DIR, PROCESSED_INPUTS_DIR,
 )
-from pins import PinNotFoundError, _now, list_pins, load_pin, pin_dir, pin_status, save_pin
+from pins import (
+    PinNotFoundError, _now, is_ready_to_post, list_pins, load_pin, pin_dir, pin_status, save_pin,
+)
 from pinterest.seo import SEOGenerationError, generate_seo_content
 from publishing import PublishError, parse_schedule_time, schedule_pin
 
@@ -232,10 +234,19 @@ def _roll_forward(config: dict) -> dict:
 
 
 def ready_queue() -> list:
-    """Pins published but not yet scheduled or posted, oldest first — the
-    drip feed's source, whatever template they are."""
+    """Pins ready to post but not yet scheduled or posted, oldest first — the
+    drip feed's source, whatever template they are.
+
+    Readiness is not the same as "published": an outfit has no landing page to
+    publish, so it qualifies as soon as it's saved. Keying off the published
+    status left every saved outfit out of the queue and the feed with nothing
+    to post.
+    """
     return sorted(
-        (pin for pin in list_pins() if pin_status(pin) == "published"),
+        (
+            pin for pin in list_pins()
+            if not pin.get("scheduled_for") and not pin.get("posted_at") and is_ready_to_post(pin)
+        ),
         key=lambda p: p.get("created_at") or "",
     )
 
