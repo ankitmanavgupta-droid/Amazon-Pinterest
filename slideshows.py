@@ -257,7 +257,13 @@ def slideshow_summary(show: dict) -> dict:
         "tiktokUrl": show.get("tiktok_url"),
         "warnings": batch_warnings(pins),
         "unrendered": unrendered,
-        "ready": bool(slides) and not unrendered and not show.get("drafted_at") and not show.get("done_at"),
+        "ready": (
+            bool(slides)
+            and not unrendered
+            and not show.get("posted_at")
+            and not show.get("drafted_at")
+            and not show.get("done_at")
+        ),
     }
 
 

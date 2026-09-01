@@ -268,6 +268,17 @@ def test_a_drafted_slideshow_is_not_offered_for_sending_again(slideshow_file, po
     assert summary["draftedAt"]
 
 
+def test_a_posted_slideshow_is_not_offered_for_sending_again(slideshow_file, posts_dir):
+    pins.save_pin(outfit("a", "tee", "jeans"))
+    (posts_dir / "a" / "pin.png").write_bytes(b"rendered")
+    slideshows.create_batches_for(["a"])
+    show = slideshows.load_slideshows()["slideshows"][0]
+
+    slideshows.update_slideshow(show["id"], posted_at="2026-08-26T10:00:00+00:00")
+
+    assert slideshows.list_slideshows()[0]["ready"] is False
+
+
 def test_a_slideshow_offers_the_default_caption_until_one_is_written(slideshow_file, posts_dir):
     for slug, top in [("a", "tee"), ("b", "shirt")]:
         pins.save_pin(outfit(slug, top, "jeans"))

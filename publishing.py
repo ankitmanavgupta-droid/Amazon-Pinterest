@@ -187,10 +187,10 @@ def post_slideshow(
     show = slideshows.get_slideshow(slideshow_id)
     if show.get("posted_at"):
         raise PublishError("That slideshow is already on TikTok — posting again would duplicate it.")
-    if show.get("drafted_at") and not draft:
+    if show.get("drafted_at"):
         raise PublishError(
             "That slideshow is already waiting in your TikTok drafts — finish it in the app, "
-            "or discard it there first."
+            "or use 'Didn't arrive — send again' before retrying."
         )
 
     summary = slideshows.slideshow_summary(show)

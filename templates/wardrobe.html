@@ -79,7 +79,9 @@
   .preview-section { margin-top: 18px; }
   .preview-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
   .preview-head h2 { margin: 0; }
-  .preview-actions { display: flex; gap: 8px; }
+  .preview-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .post-status.error { color: #a52e35; }
+  .post-status.success { color: #2f7a4c; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
   .batch { margin-bottom: 18px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
   .batch.drop-ready { border-color: var(--accent); background: var(--accent-soft); }
@@ -169,10 +171,12 @@
         <h2>Generated outfits</h2>
         <p class="lede" style="margin-top:4px">Grouped into TikTok slideshows of 3 — drag a slide to reorder it, or into another batch to regroup.</p>
         <p class="lede" id="previewCount" style="margin-top:3px"></p>
+        <p class="save-status post-status" id="postAllStatus" aria-live="polite"></p>
       </div>
       <div class="preview-actions">
         <button class="button secondary small" id="archiveUsed" type="button">Archive items used</button>
         <button class="button primary small" id="saveAll" type="button">Save all</button>
+        <button class="button primary small" id="postAllReady" type="button" disabled>Post all ready to TikTok</button>
       </div>
     </div>
     <div id="previewGrid"></div>
@@ -193,6 +197,7 @@ const CANVAS_W = 540, CANVAS_H = 960, EXPORT_SCALE = 2;
 
 let previewPins = [];
 let slideshowGroups = [];
+let postingAllReady = false;
 
 // ---------- Closet ----------
 
@@ -793,6 +798,17 @@ function renderPreview() {
     inDrafts ? `${inDrafts} waiting in your TikTok drafts` : '',
   ].filter(Boolean).join(' · ') || 'Nothing outstanding.';
 
+  const ready = ordered.filter(show => show.ready && !show.postedAt && !show.draftedAt);
+  $('postAllReady').disabled = postingAllReady || !ready.length;
+  if (!postingAllReady) {
+    $('postAllReady').textContent = ready.length
+      ? `Post all ready to TikTok (${ready.length})`
+      : 'Post all ready to TikTok';
+    $('postAllReady').title = ready.length
+      ? `Send ${ready.length} ready slideshow${ready.length === 1 ? '' : 's'} to your TikTok drafts, one after another`
+      : 'Save every slide in a slideshow before sending it';
+  }
+
   $('previewGrid').innerHTML = ordered.map((show, index) => {
     const slides = show.slides.map(slide => byslug[slide.slug]).filter(Boolean);
     if (!slides.length) return '';
@@ -819,6 +835,10 @@ function renderPreview() {
       <div class="grid">${slides.map((pin, position) => cardMarkup(pin, !show.unrendered.includes(pin.slug), position + 1)).join('')}</div>
     </div>`;
   }).join('');
+
+  if (postingAllReady) {
+    $('previewGrid').querySelectorAll('button, input').forEach(control => { control.disabled = true; });
+  }
 
   previewPins.forEach(pin => {
     const card = $('previewGrid').querySelector(`.card[data-slug="${pin.slug}"]`);
@@ -867,7 +887,7 @@ function slideBefore(grid, x, y) {
 
 $('previewGrid').addEventListener('dragstart', event => {
   const card = event.target.closest('.card');
-  if (!card || card.closest('.batch.posted') || event.target.closest('button')) {
+  if (postingAllReady || !card || card.closest('.batch.posted') || event.target.closest('button')) {
     event.preventDefault();
     return;
   }
@@ -926,7 +946,7 @@ function renumberSlides() {
 
 $('previewGrid').addEventListener('change', async event => {
   const caption = event.target.closest('.batch-caption');
-  if (!caption) return;
+  if (postingAllReady || !caption) return;
   const id = caption.closest('.batch').dataset.id;
   await fetch(`/api/slideshows/${id}`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -938,7 +958,7 @@ $('previewGrid').addEventListener('change', async event => {
 
 $('previewGrid').addEventListener('click', async event => {
   const button = event.target.closest('button[data-batch-action]');
-  if (!button) return;
+  if (postingAllReady || !button) return;
   const batch = button.closest('.batch');
   const id = batch.dataset.id;
   const caption = batch.querySelector('.batch-caption')?.value || '';
@@ -961,25 +981,110 @@ $('previewGrid').addEventListener('click', async event => {
     return;
   }
 
-  const label = button.textContent;
   if (!confirm('Send these slides to your TikTok drafts to finish in the app?')) return;
 
   button.disabled = true;
   button.textContent = 'Sending…';
+  $('postAllReady').disabled = true;
+  $('previewGrid').querySelectorAll('button[data-batch-action="draft"]').forEach(control => { control.disabled = true; });
   try {
-    const response = await fetch(`/api/slideshows/${id}/post`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ caption, draft: true }),
-    });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error || 'Send failed');
-    await syncPreview();
-    $('generateStatus').textContent =
+    const result = await sendSlideshowToDraft(id, caption);
+    markSlideshowDrafted(id, result);
+    try {
+      if (!await syncPreview()) renderPreview();
+    } catch (error) {
+      renderPreview();
+    }
+    $('postAllStatus').className = 'save-status post-status success';
+    $('postAllStatus').textContent =
       'Sent to your TikTok drafts — open the app to post it, then clear it from here.';
   } catch (error) {
     alert(error.message);
-    button.disabled = false;
-    button.textContent = label;
+    renderPreview();
+  }
+});
+
+async function sendSlideshowToDraft(id, caption) {
+  const response = await fetch(`/api/slideshows/${id}/post`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ caption, draft: true }),
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || 'Send failed');
+  return body;
+}
+
+function markSlideshowDrafted(id, result) {
+  const show = slideshowGroups.find(entry => entry.id === id);
+  if (!show) return;
+  show.draftedAt = result.draftedAt || new Date().toISOString();
+  show.ready = false;
+}
+
+$('postAllReady').addEventListener('click', async () => {
+  if (postingAllReady) return;
+
+  // Snapshot the visible order and each current caption before the first send.
+  // Awaiting inside this loop is deliberate: Zernio and TikTok see one complete
+  // slideshow request at a time, never a burst made with Promise.all.
+  const readyById = new Map(slideshowGroups
+    .filter(show => show.ready && !show.postedAt && !show.draftedAt)
+    .map(show => [show.id, show]));
+  const requests = [...$('previewGrid').querySelectorAll('.batch')].flatMap(batch => {
+    if (!readyById.has(batch.dataset.id)) return [];
+    return [{
+      id: batch.dataset.id,
+      caption: batch.querySelector('.batch-caption')?.value || readyById.get(batch.dataset.id).caption || '',
+    }];
+  });
+  if (!requests.length) return;
+
+  const noun = requests.length === 1 ? 'slideshow' : 'slideshows';
+  if (!confirm(`Send ${requests.length} ready ${noun} to your TikTok drafts, one after another?`)) return;
+
+  postingAllReady = true;
+  $('postAllReady').disabled = true;
+  $('archiveUsed').disabled = true;
+  $('saveAll').disabled = true;
+  $('previewGrid').querySelectorAll('button, input').forEach(control => { control.disabled = true; });
+  $('postAllStatus').className = 'save-status post-status';
+
+  let sent = 0;
+  let failure = null;
+  for (const request of requests) {
+    $('postAllReady').textContent = `Sending ${sent + 1} of ${requests.length}…`;
+    $('postAllStatus').textContent = `Sending slideshow ${sent + 1} of ${requests.length} to TikTok drafts…`;
+    try {
+      const result = await sendSlideshowToDraft(request.id, request.caption);
+      markSlideshowDrafted(request.id, result);
+      sent += 1;
+    } catch (error) {
+      failure = error;
+      break;
+    }
+  }
+
+  postingAllReady = false;
+  try {
+    if (!await syncPreview()) renderPreview();
+  } catch (error) {
+    // The successful responses above are enough to render a safe local state;
+    // a later page refresh will reconcile it with the server again.
+    renderPreview();
+  }
+  $('archiveUsed').disabled = false;
+  $('saveAll').disabled = false;
+
+  if (failure) {
+    const remaining = requests.length - sent;
+    $('postAllStatus').className = 'save-status post-status error';
+    $('postAllStatus').textContent =
+      `Sent ${sent} of ${requests.length}; stopped with ${remaining} remaining: ${failure.message} `
+      + 'Check TikTok drafts before trying the remaining slideshows again.';
+  } else {
+    $('postAllStatus').className = 'save-status post-status success';
+    $('postAllStatus').textContent =
+      `Sent all ${sent} ${sent === 1 ? 'slideshow' : 'slideshows'} to your TikTok drafts, one after another.`;
   }
 });
 
@@ -988,7 +1093,7 @@ $('previewGrid').addEventListener('click', async event => {
 // waiting to be posted, with no way back to it.
 async function syncPreview() {
   const response = await fetch('/api/slideshows');
-  if (!response.ok) return;
+  if (!response.ok) return false;
   slideshowGroups = await response.json();
   const slugs = [...new Set(slideshowGroups.flatMap(show => show.slides.map(slide => slide.slug)))];
   const fetched = await Promise.all(slugs.map(slug =>
@@ -996,11 +1101,12 @@ async function syncPreview() {
   ));
   previewPins = fetched.filter(Boolean);
   renderPreview();
+  return true;
 }
 
 $('previewGrid').addEventListener('click', async event => {
   const button = event.target.closest('button[data-action]');
-  if (!button) return;
+  if (postingAllReady || !button) return;
   const card = button.closest('.card');
   const slug = card.dataset.slug;
   const pin = previewPins.find(entry => entry.slug === slug);

@@ -1,15 +1,24 @@
-# Amazon → Pinterest
+# Amazon Pinterest Studio
 
-Turns Amazon product links into a "shop the look" Pinterest pin: it fetches each
-product's photo, cuts out the background, lays them out on a pin you arrange by
-hand, publishes a landing page where every product in the image is separately
-clickable, and posts the pin to Pinterest.
+A content generation tool for Pinterest and TikTok. It takes the slow parts of
+making social content (sourcing products, cutting out photos, laying out an
+image, writing the copy, publishing a landing page, posting on a schedule) and
+runs them from one dashboard, so a batch of posts takes minutes instead of an
+afternoon.
 
-You don't have to bring the links either — describe a look and it finds
+Two kinds of content come out of it:
+
+- **Shop the look pins** for Pinterest, built from Amazon product links, with a
+  landing page where every product in the image is separately clickable.
+- **Outfit slideshows** for TikTok, generated from a saved wardrobe and posted
+  as photo carousels.
+
+You do not have to bring the product links either. Describe a look and it finds
 products that suit it, judging the photos rather than just the star ratings.
 
-Every product link is region-aware — a UK visitor and a US visitor clicking the
-same product each go to their own Amazon store, with the matching Associates tag.
+Every product link is region aware, so a UK visitor and a US visitor clicking
+the same product each go to their own Amazon store with the matching Associates
+tag.
 
 ## Setup
 
@@ -20,17 +29,20 @@ pip install -r requirements.txt
 cp .env.example .env      # then fill it in
 ```
 
-Keys you'll need in `.env`:
+Keys you will need in `.env`:
 
 | Variable | What it's for | Where to get it |
 |---|---|---|
 | `AMAZON_AFFILIATE_TAG` | US affiliate links | associates.amazon.com |
 | `AMAZON_AFFILIATE_TAG_UK` | UK affiliate links (optional) | affiliate-program.amazon.co.uk |
-| `CANOPY_API_KEY` | Product titles + images | canopyapi.co (100 free requests/month) |
+| `CANOPY_API_KEY` | Product titles and images | canopyapi.co (100 free requests/month) |
 | `ANTHROPIC_API_KEY` | SEO titles, descriptions, hashtags | console.anthropic.com |
 | `ZERNIO_API_KEY` | Posting to Pinterest and TikTok | zernio.com |
 
-Regions are only built for tags you actually set, so a UK-only account just
+`.env` is gitignored. Only `.env.example`, which holds placeholders, is
+committed.
+
+Regions are only built for tags you actually set, so a UK only account just
 produces UK links.
 
 ## Using it
@@ -41,18 +53,19 @@ python app.py       # then open http://localhost:5000
 
 Everything happens on that one page:
 
-1. **Find** (optional) — describe a look ("early autumn cottagecore tops") and
-   get back scored products to tick and drop into the builder. See below.
-2. **Build** — paste a title and up to 6 Amazon links. Products are fetched,
-   backgrounds removed, and an SEO title/description/hashtags written.
-3. **Edit** — drag the cutouts and text around the pin. Saving stores the
+1. **Find** (optional): describe a look, such as "early autumn cottagecore
+   tops", and get back scored products to tick and drop into the builder. See
+   below.
+2. **Build**: paste a title and up to 6 Amazon links. Products are fetched,
+   backgrounds removed, and an SEO title, description and hashtags written.
+3. **Edit**: drag the cutouts and text around the pin. Saving stores the
    layout, so you can reopen and adjust a pin later.
-4. **Publish & post** — pushes the landing page to GitHub Pages and posts the
+4. **Publish and post**: pushes the landing page to GitHub Pages and posts the
    pin to Pinterest, onto whichever board fits best. Or pick a date and time
    and hit **Schedule** to have it go out later.
 
-Short links (`amzn.to`, `link.amazon`) and sponsored search links all work —
-they get resolved to the real product first.
+Short links (`amzn.to`, `link.amazon`) and sponsored search links all work.
+They get resolved to the real product first.
 
 ### From the terminal instead
 
@@ -64,7 +77,7 @@ python schedule_pin.py <slug> "2026-08-20T09:30" [Europe/London]   # post it lat
 python find_products.py "coquette bedroom decor" --append          # find products
 ```
 
-`links.txt` format — two `#` lines for the title, then that pin's product URLs:
+`links.txt` format: two `#` lines for the title, then that pin's product URLs.
 
 ```
 #Summer Tops
@@ -78,36 +91,37 @@ https://www.amazon.com/dp/...
 The dashboard's "New pin" panel has a **Template** dropdown. Alongside the
 product collage above, **Generated image** covers a different workflow: you
 give it one Amazon link, it hands you back a folder structure, and a manual
-step in ChatGPT does the actual image-making.
+step in ChatGPT does the actual image making.
 
 ```
 incoming-clothes/     reference photos, waiting for a generated image
-generated-images/     ChatGPT's finished PNGs, saved by hand — never emptied
+generated-images/     ChatGPT's finished PNGs, saved by hand, never emptied
 processed-inputs/     reference photos already matched to a pin (archive)
 failed-inputs/        reference photos you abandoned (archive)
 .imagegen-state.json  which generated-images/ files are already used
 ```
 
 1. Paste a product link (dashboard, or `python add_clothes_link.py <url>`).
-   The product photo is fetched and saved to `incoming-clothes/<slug>.jpg` —
-   that's the reference image.
-2. Generate a pin from it yourself, in ChatGPT — this app has no part in that
+   The product photo is fetched and saved to `incoming-clothes/<slug>.jpg`,
+   which is the reference image.
+2. Generate a pin from it yourself, in ChatGPT. This app has no part in that
    step. Save the result as `generated-images/<slug>.png`.
-3. `python app.py` checks for new files there every minute automatically (or
-   run `python sync_generated.py` once by hand, e.g. from cron). Once matched,
-   the pin is posted **as-is** — no editor, no text overlay — linking straight
-   back to the product it came from.
+3. `python app.py` checks for new files there every minute automatically, or
+   run `python sync_generated.py` once by hand, for example from cron. Once
+   matched, the pin is posted as is, with no editor and no text overlay,
+   linking straight back to the product it came from.
 
-`generated-images/` is a permanent archive, never cleared out — the state file
-is what stops a re-scan from redoing a match it's already made. A pending
-reference photo you decide not to use can be moved to `failed-inputs/` with
-the dashboard's "Mark as failed" button, or `mark_failed()` from the terminal.
+`generated-images/` is a permanent archive that is never cleared out. The state
+file is what stops a re-scan from redoing a match it has already made. A
+pending reference photo you decide not to use can be moved to `failed-inputs/`
+with the dashboard's "Mark as failed" button, or `mark_failed()` from the
+terminal.
 
 ## Outfit Studio: a wardrobe you generate looks from
 
 `/wardrobe` is a persistent closet, separate from any one pin. Drop garment
 photos into it, drag them between category tabs to sort, and it keeps the
-background-removed cutouts under `wardrobe-items/`.
+background removed cutouts under `wardrobe-items/`.
 
 ```
 wardrobe-items/
@@ -117,61 +131,67 @@ wardrobe-items/
 ```
 
 **Generating.** A *recipe* says what an outfit is made of. Tick **Combine all**
-on a section and every one of its items is used; leave it unticked and set a
+on a section and every one of its items is used. Leave it unticked and set a
 count instead, and that many are picked at random per outfit. Combining tops
-and jeans gives you every top/jeans pairing, each with its own random watch,
-belt and fragrance.
+and jeans gives you every top and jeans pairing, each with its own random
+watch, belt and fragrance.
 
-**Archiving.** ☐ on an item takes it out of future random pulls without
-deleting it; ↺ (under "Show archived items") puts it back. **×** deletes for
-good. After a run, **Archive items used** clears the whole batch at once.
+**Archiving.** The checkbox on an item takes it out of future random pulls
+without deleting it. The restore arrow (under "Show archived items") puts it
+back, and **x** deletes for good. After a run, **Archive items used** clears
+the whole batch at once.
 
 **TikTok slideshows.** Generated outfits are grouped into batches of three for
 posting as a TikTok photo carousel. Within a batch the same top never appears
-twice, and the same bottom won't either unless the recipe leaves no choice —
-a batch that had to repeat one says so. Drag a slide between batches to
-regroup. Each outfit still posts to Pinterest individually as its own pin;
-the slideshow is an additional destination, not a replacement.
+twice, and the same bottom will not either unless the recipe leaves no choice.
+A batch that had to repeat one says so. Drag a slide between batches to
+regroup. Each outfit still posts to Pinterest individually as its own pin, so
+the slideshow is an additional destination rather than a replacement.
 
 Posting to TikTok goes through Zernio like Pinterest does, so connect a TikTok
 account in their dashboard first.
 
-Outfits are composed at **9:16** (540×960 in the editor, exported at 1080×1920)
-— TikTok's full-screen shape, so a slide fills the phone edge to edge with no
-border and nothing added around it. Doubling 540×960 lands exactly on TikTok's
-own 1080×1920, so the upload is never scaled up or resampled.
+Outfits are composed at 9:16 (540x960 in the editor, exported at 1080x1920),
+which is TikTok's full screen shape, so a slide fills the phone edge to edge
+with no border and nothing added around it. Doubling 540x960 lands exactly on
+TikTok's own 1080x1920, so the upload is never scaled up or resampled.
 
-That's the outfit template only. A product collage stays 2:3, which is what
+That is the outfit template only. A product collage stays 2:3, which is what
 Pinterest wants for a Pin.
 
-Each slideshow goes out with a default caption — `outfit inspiration for you
-#outfitinspo #outfitsideas #boysfashion #mensoutfits #mystyle` — shown in the
+Each slideshow goes out with a default caption, `outfit inspiration for you
+#outfitinspo #outfitsideas #boysfashion #mensoutfits #mystyle`, shown in the
 box on the batch so you can edit it before sending.
 
-Pinterest copy is written per outfit by Claude, the first time that pin is
-posted rather than when it's generated, so it's only paid for on pins that
-actually go out. A wardrobe item is named after whatever file was dropped in,
-so the copywriter is given the *kinds* of piece in the look — tops, jeans,
-watches — rather than the filenames.
+**Post all ready to TikTok** sends every fully saved, unsent slideshow to your
+TikTok drafts. It waits for each slideshow to finish sending before it starts
+the next one. If a send fails, it stops there. The drafts already accepted stay
+marked, so using the button again resumes with only the remaining slideshows.
 
-TikTok rations direct posting, and in practice it's usually unavailable, so a
+Pinterest copy is written per outfit by Claude, the first time that pin is
+posted rather than when it is generated, so it is only paid for on pins that
+actually go out. A wardrobe item is named after whatever file was dropped in,
+so the copywriter is given the *kinds* of piece in the look (tops, jeans,
+watches) rather than the filenames.
+
+TikTok rations direct posting, and in practice it is usually unavailable, so a
 slideshow is delivered to the account's **Creator Inbox**. Zernio reports that
-as "published" because it handed it over, but it isn't live until you open the
-TikTok app, go to the notifications tab and finish the post. Once it's up,
-clear the batch from the wardrobe and it drops off the list — the record is
-kept so those outfits aren't batched again.
+as "published" because it handed it over, but it is not live until you open the
+TikTok app, go to the notifications tab and finish the post. Once it is up,
+clear the batch from the wardrobe and it drops off the list. The record is kept
+so those outfits are not batched again.
 
 ## Posting on an interval instead of one at a time
 
-The **Auto-post queue** panel turns on "post every N hours": instead of
-picking a time for each pin, whatever's published-but-not-yet-posted (either
-template) gets handed to Zernio in a fixed cadence, oldest first. Zernio holds
-and fires each slot from its own servers — a slot already assigned goes out
-even with this app closed. Running the app (or `python sync_generated.py`) is
-only needed to pick up newly-ready pins and give them their turn.
+The **Auto-post queue** panel turns on "post every N hours". Instead of picking
+a time for each pin, whatever is published but not yet posted (either template)
+gets handed to Zernio in a fixed cadence, oldest first. Zernio holds and fires
+each slot from its own servers, so a slot already assigned goes out even with
+this app closed. Running the app (or `python sync_generated.py`) is only needed
+to pick up newly ready pins and give them their turn.
 
 Scheduling a pin for one specific time, from the dashboard or
-`schedule_pin.py`, still works exactly as before — the two aren't exclusive,
+`schedule_pin.py`, still works exactly as before. The two are not exclusive,
 but a pin only ever gets one or the other.
 
 ## Finding products
@@ -181,25 +201,26 @@ python find_products.py "early autumn cottagecore tops"
 ```
 
 Claude turns the look into Amazon search terms, each search is run, and the
-results are filtered on the boring stuff first — sponsored slots dropped, then
-anything under 4★ or with fewer than 20 reviews. Only what survives gets its
-photo downloaded, because that's the expensive part.
+results are filtered on the boring stuff first: sponsored slots dropped, then
+anything under 4 stars or with fewer than 20 reviews. Only what survives gets
+its photo downloaded, because that is the expensive part.
 
 Then Claude looks at the photos. This is the part that matters: what ends up on
-a pin isn't the product, it's the product's photo with its background removed.
-So a listing whose image has a price badge burned into the corner, or three
-angles collaged together, is no use however good the product is — and that only
-shows up by looking. Each product comes back with a score and the reason for it
-("clean cutout, soft neutral knit" / "watermark across the sleeve").
+a pin is not the product, it is the product's photo with its background
+removed. So a listing whose image has a price badge burned into the corner, or
+three angles collaged together, is no use however good the product is, and that
+only shows up by looking. Each product comes back with a score and the reason
+for it ("clean cutout, soft neutral knit" or "watermark across the sleeve").
 
 One Amazon search returns a lot of the same seller, and every colour of a top
-is its own listing, so near-identical titles are collapsed and no more than two
-products per brand come back — six variations of one blouse isn't a shop-the-look
-pin.
+is its own listing, so near identical titles are collapsed and no more than two
+products per brand come back. Six variations of one blouse is not a shop the
+look pin.
 
 Searches are cached under `.cache/searches/` for a week. That matters: Canopy's
-free tier is 100 requests a month, one per search term, and building pins spends
-from the same pot. Three terms per run is the default; `--terms` changes it.
+free tier is 100 requests a month, one per search term, and building pins
+spends from the same pot. Three terms per run is the default, and `--terms`
+changes it.
 
 Add `--append` to write the picks straight into `links.txt`.
 
@@ -215,13 +236,18 @@ posts/<slug>/
 docs/shop/<slug>.html   the published landing page (+ its .png)
 ```
 
-`pin.json` is the single source of truth; status is derived from it and from
-what's on disk, so nothing can drift out of sync.
+`pin.json` is the single source of truth. Status is derived from it and from
+what is on disk, so nothing can drift out of sync.
+
+Working data (`posts/`, `wardrobe-items/`, `generated-images/`,
+`incoming-clothes/` and the local state files) stays out of git. Only
+`docs/shop/` is committed, because GitHub Pages serves the published landing
+pages from it.
 
 ## The code
 
 ```
-app.py            the Flask app — every page and API route
+app.py            the Flask app, every page and API route
 config.py         paths, keys, and the GitHub Pages URL
 
 pins.py           pin state, the build pipeline, and outfit layout
@@ -230,18 +256,18 @@ slideshows.py     grouping outfits into TikTok carousels
 generated_pins.py the ChatGPT-image template, and interval posting
 discovery.py      turning a described look into scored products
 publishing.py     pushing pages live, then posting to Pinterest/TikTok
-zernio.py         the posting gateway — Pinterest and TikTok both go through it
+zernio.py         the posting gateway, Pinterest and TikTok both go through it
 
 amazon/           affiliate links, Canopy lookups, images, background removal
 pinterest/        SEO copy, board picking, and the direct API client (unused)
 templates/        dashboard, pin builder, outfit builder, wardrobe
-tests/            pytest, no network — every external call is stubbed
+tests/            pytest, no network, every external call is stubbed
 ```
 
-The single-purpose scripts at the root (`build_pin.py`, `publish_pin.py`,
+The single purpose scripts at the root (`build_pin.py`, `publish_pin.py`,
 `post_pin.py`, `schedule_pin.py`, `find_products.py`, `sync_generated.py`,
 `add_clothes_link.py`, `authorize_pinterest.py`) are the terminal entry points
-described above; each one is a thin wrapper over the modules.
+described above. Each one is a thin wrapper over the modules.
 
 Run the tests with `pytest`.
 
@@ -249,14 +275,15 @@ Run the tests with `pytest`.
 
 - **Pinterest posting** currently goes through Zernio, because a Pinterest
   developer app needs approved access before it can post. `pinterest/client.py`
-  and `pinterest/auth.py` talk to Pinterest's own API directly and are ready for
-  when that access comes through — Pinterest's API is free, Zernio is not.
-- **Pins can't be deleted through the API.** If a wrong pin goes out, remove it
-  in the Pinterest app.
-- **Board sections** aren't supported by Zernio's API, so pins land on a board
+  and `pinterest/auth.py` talk to Pinterest's own API directly and are ready
+  for when that access comes through. Pinterest's API is free, Zernio is not.
+- **Pins cannot be deleted through the API.** If a wrong pin goes out, remove
+  it in the Pinterest app.
+- **Board sections** are not supported by Zernio's API, so pins land on a board
   rather than a section within it.
-- **Scheduling** hands the pin to Zernio with a time attached, and they publish
-  it — so it still goes out with this machine off. The landing page can't wait,
-  though: it's pushed live at the moment you schedule, since the pin links to
-  it. Zernio's API can't cancel a scheduled post, so a wrong time has to be
+- **Scheduling** hands the pin to Zernio with a time attached and they publish
+  it, so it still goes out with this machine off. The landing page cannot wait,
+  though: it is pushed live at the moment you schedule, since the pin links to
+  it. Zernio's API cannot cancel a scheduled post, so a wrong time has to be
   fixed in their dashboard.
+```

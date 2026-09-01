@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 import publishing
+import slideshows
 import zernio as zernio_client
 
 
@@ -104,3 +105,13 @@ def test_create_pin_schedules_instead_of_publishing_now(captured_payload):
     assert captured_payload["scheduledFor"] == "2026-09-01T09:30:00"
     assert captured_payload["timezone"] == "Europe/London"
     assert "publishNow" not in captured_payload  # sending both would be ambiguous
+
+
+def test_an_existing_tiktok_draft_cannot_be_sent_again(monkeypatch):
+    monkeypatch.setattr(slideshows, "get_slideshow", lambda slideshow_id: {
+        "id": slideshow_id,
+        "drafted_at": "2026-08-26T10:00:00+00:00",
+    })
+
+    with pytest.raises(publishing.PublishError, match="already waiting in your TikTok drafts"):
+        publishing.post_slideshow("show-1", draft=True)

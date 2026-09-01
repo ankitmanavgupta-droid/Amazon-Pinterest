@@ -6,6 +6,16 @@ import wardrobe
 from app import app
 
 
+def test_wardrobe_offers_a_post_all_ready_tiktok_action():
+    with app.test_client() as client:
+        page = client.get("/wardrobe").get_data(as_text=True)
+
+    assert 'id="postAllReady"' in page
+    assert "Post all ready to TikTok" in page
+    assert "for (const request of requests)" in page
+    assert "await sendSlideshowToDraft(request.id, request.caption)" in page
+
+
 def test_reused_outfit_position_gets_a_new_cutout_url(tmp_path, monkeypatch):
     posts_dir = tmp_path / "posts"
     posts_dir.mkdir()
